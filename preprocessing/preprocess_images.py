@@ -313,45 +313,45 @@ def largest_component_mask(mask: np.ndarray, min_area: int = 100) -> Optional[np
     return out
 
 
-def compute_mask_coverage(mask: np.ndarray, crop_shape: Tuple[int,int]) -> float:
-    if mask is None or mask.size == 0:
-        return 0.0
-    h,w = crop_shape[:2]
-    total = h * w
-    if total == 0:
-        return 0.0
-    foreground = int(np.count_nonzero(mask))
-    return foreground / float(total)
+# def compute_mask_coverage(mask: np.ndarray, crop_shape: Tuple[int,int]) -> float:
+#     if mask is None or mask.size == 0:
+#         return 0.0
+#     h,w = crop_shape[:2]
+#     total = h * w
+#     if total == 0:
+#         return 0.0
+#     foreground = int(np.count_nonzero(mask))
+#     return foreground / float(total)
 
 
 # ----------------------------
 # Rotation-aware crop
 # ----------------------------
 
-def rotate_crop_by_box(bgr: np.ndarray, box: np.ndarray, margin_frac: float) -> np.ndarray:
-    pts = np.asarray(box, dtype=np.float32)
-    if pts.size == 0:
-        return np.zeros((0,0,3), dtype=np.uint8)
-    rect = cv2.minAreaRect(pts)
-    (cx,cy),(w,h),angle = rect
-    if w <= 0 or h <= 0:
-        return np.zeros((0,0,3), dtype=np.uint8)
-    M = cv2.getRotationMatrix2D((cx,cy), angle, 1.0)
-    H, W = bgr.shape[:2]
-    rotated = cv2.warpAffine(bgr, M, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
-    ones = np.ones((pts.shape[0],1), dtype=np.float32)
-    pts_h = np.hstack([pts, ones])
-    rot_pts = (M @ pts_h.T).T
-    x_min = float(rot_pts[:,0].min()); y_min = float(rot_pts[:,1].min())
-    x_max = float(rot_pts[:,0].max()); y_max = float(rot_pts[:,1].max())
-    max_side = max(x_max - x_min, y_max - y_min, 1.0)
-    pad = int(round(max_side * float(margin_frac)))
-    x0 = int(max(0, math.floor(x_min - pad))); y0 = int(max(0, math.floor(y_min - pad)))
-    x1 = int(min(W, math.ceil(x_max + pad))); y1 = int(min(H, math.ceil(y_max + pad)))
-    if x1 <= x0 or y1 <= y0:
-        return np.zeros((0,0,3), dtype=np.uint8)
-    crop = rotated[y0:y1, x0:x1]
-    return crop
+# def rotate_crop_by_box(bgr: np.ndarray, box: np.ndarray, margin_frac: float) -> np.ndarray:
+#     pts = np.asarray(box, dtype=np.float32)
+#     if pts.size == 0:
+#         return np.zeros((0,0,3), dtype=np.uint8)
+#     rect = cv2.minAreaRect(pts)
+#     (cx,cy),(w,h),angle = rect
+#     if w <= 0 or h <= 0:
+#         return np.zeros((0,0,3), dtype=np.uint8)
+#     M = cv2.getRotationMatrix2D((cx,cy), angle, 1.0)
+#     H, W = bgr.shape[:2]
+#     rotated = cv2.warpAffine(bgr, M, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
+#     ones = np.ones((pts.shape[0],1), dtype=np.float32)
+#     pts_h = np.hstack([pts, ones])
+#     rot_pts = (M @ pts_h.T).T
+#     x_min = float(rot_pts[:,0].min()); y_min = float(rot_pts[:,1].min())
+#     x_max = float(rot_pts[:,0].max()); y_max = float(rot_pts[:,1].max())
+#     max_side = max(x_max - x_min, y_max - y_min, 1.0)
+#     pad = int(round(max_side * float(margin_frac)))
+#     x0 = int(max(0, math.floor(x_min - pad))); y0 = int(max(0, math.floor(y_min - pad)))
+#     x1 = int(min(W, math.ceil(x_max + pad))); y1 = int(min(H, math.ceil(y_max + pad)))
+#     if x1 <= x0 or y1 <= y0:
+#         return np.zeros((0,0,3), dtype=np.uint8)
+#     crop = rotated[y0:y1, x0:x1]
+#     return crop
 
 
 def resized_fill(img: np.ndarray, th: int, tw: int) -> np.ndarray:
@@ -457,187 +457,217 @@ def prepare_image(img: np.ndarray, cfg: PreprocessConfig) -> np.ndarray:
         img_bal = apply_clahe_bgr(img_bal, cfg.clahe_clip, cfg.clahe_grid)
     return img_bal
 
-
 def process_single_image(src: str, dst: str, cfg: PreprocessConfig, intermediates_root: Optional[str] = None, tuned_params: Optional[Dict[str,Any]] = None) -> Dict[str,Any]:
+    """Simplified image processing: color balance, CLAHE, and resize (no cropping)."""
     meta = {"src": src, "dst": dst, "status": "unknown", "timestamp": time.strftime(cfg.timestamp_format)}
     try:
         img = load_image_exif(src, use_exif=cfg.use_exif)
         if img is None:
-            meta['status'] = 'read_failed'
+            meta["status"] = "read_failed"
             logging.warning("Failed to read %s", src)
             return meta
-        H0, W0 = img.shape[:2]
-        meta['orig_w'] = int(W0); meta['orig_h'] = int(H0)
 
-        area = float(H0 * W0)
-        min_contour_area = max(int(max(100, cfg.min_contour_area_fraction * area)), 100)
-        margin = tuned_params.get('margin', cfg.margin) if tuned_params else cfg.margin
-
+        # Basic preprocessing (white balance + CLAHE)
         img_bal = prepare_image(img, cfg)
 
-        if cfg.save_intermediates and intermediates_root:
-            inter_dir = Path(intermediates_root) / Path(src).parent.name
-            ensure_dir(str(inter_dir))
-            imwrite_unicode(str(inter_dir / (Path(src).stem + "_balanced.jpg")), img_bal, quality=95)
-
-        # build base mask quickly
-        mask_hsv = mask_by_hsv_adaptive(img_bal)
-        mask_otsu = mask_by_otsu(img_bal)
-        mask_edge = mask_by_edges(img_bal)
-        combined = cv2.bitwise_or(mask_hsv, cv2.bitwise_or(mask_otsu, mask_edge))
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
-        combined = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel, iterations=2)
-        combined = cv2.morphologyEx(combined, cv2.MORPH_OPEN, kernel, iterations=1)
-
-        if cfg.save_intermediates and intermediates_root:
-            inter_dir = Path(intermediates_root) / Path(src).parent.name
-            imwrite_unicode(str(inter_dir / (Path(src).stem + "_mask_combined.png")), combined, quality=100)
-
-        # Attempts to locate the object using increasingly permissive strategies
-        attempt = 0
-        used_strategy = None
-        crop_img = None
-        crop_mask = None
-
-        while attempt < cfg.max_attempts:
-            if attempt == 0:
-                target_mask = combined.copy(); try_margin = margin
-            elif attempt == 1:
-                kernel2 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9,9))
-                target_mask = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel2, iterations=2)
-                try_margin = margin
-            elif attempt == 2:
-                target_mask = mask_hsv.copy(); try_margin = margin + 0.02
-            else:
-                target_mask = combined.copy(); try_margin = margin + cfg.margin_increment_steps[min(attempt - 3, len(cfg.margin_increment_steps)-1)]
-
-            lamr = largest_contour_minarea_rect(target_mask, min_contour_area)
-            if lamr:
-                box, cnt, cnt_area = lamr
-                crop_img = rotate_crop_by_box(img_bal, box, try_margin)
-                crop_mask = rotate_crop_by_box(target_mask, box, try_margin)
-                used_strategy = f"minarea_attempt_{attempt}"
-            else:
-                crop_img = None; crop_mask = None
-
-            if crop_img is not None and crop_img.size:
-                coverage = compute_mask_coverage((crop_mask>0).astype(np.uint8), crop_img.shape[:2])
-                meta['coverage'] = float(coverage)
-                if coverage >= cfg.crop_mask_coverage_threshold:
-                    meta['status'] = 'ok'
-                    break
-            attempt += 1
-
-        # KMeans fallback (only if enabled and sklearn present)
-        if (crop_img is None or meta.get('coverage',0.0) < cfg.crop_mask_coverage_threshold) and HAS_SKLEARN and not cfg.fast:
-            km_mask = mask_hsv_kmeans(img_bal, downscale=cfg.sample_downscale, n_clusters=cfg.kmeans_clusters)
-            if km_mask is not None:
-                if cfg.save_intermediates and intermediates_root:
-                    inter_dir = Path(intermediates_root) / Path(src).parent.name
-                    imwrite_unicode(str(inter_dir / (Path(src).stem + "_mask_kmeans.png")), km_mask, quality=100)
-                lamr2 = largest_contour_minarea_rect(km_mask, max(200, int(min_contour_area/2)))
-                if lamr2:
-                    box2, cnt2, area2 = lamr2
-                    crop_img2 = rotate_crop_by_box(img_bal, box2, margin + 0.02)
-                    crop_mask2 = rotate_crop_by_box(km_mask, box2, margin + 0.02)
-                    cov2 = compute_mask_coverage((crop_mask2>0).astype(np.uint8), crop_img2.shape[:2])
-                    if cov2 >= cfg.crop_mask_coverage_threshold:
-                        crop_img = crop_img2; crop_mask = crop_mask2
-                        used_strategy = 'kmeans_minarea'
-                        meta['coverage'] = float(cov2); meta['status'] = 'ok'
-
-        # Axis bbox fallback
-        if (crop_img is None) or (meta.get('coverage',0.0) < cfg.crop_mask_coverage_threshold):
-            cnt_bbox = largest_component_bbox_from_mask(combined, min_area=max(50, int(min_contour_area/4)))
-            if cnt_bbox is not None:
-                x,y,w,h = cnt_bbox
-                pad = int(round(max(w,h) * (margin + 0.02)))
-                x0 = max(0, x - pad); y0 = max(0, y - pad); x1 = min(W0, x + w + pad); y1 = min(H0, y + h + pad)
-                crop_img = img_bal[y0:y1, x0:x1]
-                crop_mask = combined[y0:y1, x0:x1]
-                used_strategy = 'axis_bbox_fallback'
-                cov = compute_mask_coverage((crop_mask>0).astype(np.uint8), crop_img.shape[:2])
-                meta['coverage'] = float(cov)
-                if cov >= cfg.crop_mask_coverage_threshold:
-                    meta['status'] = 'ok'
-
-        # Center fallback
-        if (crop_img is None) or (meta.get('coverage',0.0) < cfg.crop_mask_coverage_threshold):
-            side = int(round(min(H0, W0) * 0.85))
-            cx, cy = W0//2, H0//2
-            x0 = max(0, cx - side//2); y0 = max(0, cy - side//2)
-            x1 = min(W0, x0 + side); y1 = min(H0, y0 + side)
-            crop_img = img_bal[y0:y1, x0:x1]
-            used_strategy = 'center_fallback'
-            crop_mask = combined[y0:y1, x0:x1]
-            meta['coverage'] = float(compute_mask_coverage((crop_mask>0).astype(np.uint8), crop_img.shape[:2]))
-            meta['status'] = 'fallback_center'
-
-        if crop_img is None or crop_img.size == 0:
-            meta['status'] = 'crop_failed'
-            logging.error("Crop failed entirely for %s", src)
-            return meta
-
-        # Resize and save
+        # Resize ke ukuran target
         th, tw = cfg.target_size
-        out = resized_fill(crop_img, th, tw)
+        out = cv2.resize(img_bal, (tw, th), interpolation=cv2.INTER_AREA)
 
-        if cfg.save_intermediates and intermediates_root:
-            inter_dir = Path(intermediates_root) / Path(src).parent.name
-            ensure_dir(str(inter_dir))
-            imwrite_unicode(str(inter_dir / (Path(src).stem + "_crop_raw.jpg")), crop_img, quality=95)
-            if crop_mask is not None:
-                imwrite_unicode(str(inter_dir / (Path(src).stem + "_crop_mask.png")), crop_mask, quality=100)
-
-        Path(dst).parent.mkdir(parents=True, exist_ok=True)
-        if Path(dst).exists() and not cfg.force:
-            meta['status'] = 'skipped'
-            return meta
+        # Simpan hasil
+        ensure_dir(str(Path(dst).parent))
         saved = imwrite_unicode(dst, out, quality=cfg.save_quality)
-        if not saved:
-            meta['status'] = 'save_failed'
-            return meta
-
-        meta['status'] = 'ok' if meta.get('status') != 'fallback_center' else 'fallback_center'
-        meta['used_strategy'] = used_strategy
-        meta['final_w'] = int(tw); meta['final_h'] = int(th)
+        meta["status"] = "ok" if saved else "save_failed"
+        meta["final_w"], meta["final_h"] = tw, th
         return meta
 
     except Exception as e:
-        logging.exception("Exception processing %s: %s", src, e)
-        meta['status'] = 'error'
-        meta['exception'] = str(e)
+        logging.exception("Error processing %s: %s", src, e)
+        meta["status"] = "error"
+        meta["exception"] = str(e)
         return meta
+
+
+# def process_single_image(src: str, dst: str, cfg: PreprocessConfig, intermediates_root: Optional[str] = None, tuned_params: Optional[Dict[str,Any]] = None) -> Dict[str,Any]:
+#     meta = {"src": src, "dst": dst, "status": "unknown", "timestamp": time.strftime(cfg.timestamp_format)}
+#     try:
+#         img = load_image_exif(src, use_exif=cfg.use_exif)
+#         if img is None:
+#             meta['status'] = 'read_failed'
+#             logging.warning("Failed to read %s", src)
+#             return meta
+#         H0, W0 = img.shape[:2]
+#         meta['orig_w'] = int(W0); meta['orig_h'] = int(H0)
+
+#         area = float(H0 * W0)
+#         min_contour_area = max(int(max(100, cfg.min_contour_area_fraction * area)), 100)
+#         margin = tuned_params.get('margin', cfg.margin) if tuned_params else cfg.margin
+
+#         img_bal = prepare_image(img, cfg)
+
+#         if cfg.save_intermediates and intermediates_root:
+#             inter_dir = Path(intermediates_root) / Path(src).parent.name
+#             ensure_dir(str(inter_dir))
+#             imwrite_unicode(str(inter_dir / (Path(src).stem + "_balanced.jpg")), img_bal, quality=95)
+
+#         # build base mask quickly
+#         mask_hsv = mask_by_hsv_adaptive(img_bal)
+#         mask_otsu = mask_by_otsu(img_bal)
+#         mask_edge = mask_by_edges(img_bal)
+#         combined = cv2.bitwise_or(mask_hsv, cv2.bitwise_or(mask_otsu, mask_edge))
+#         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+#         combined = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel, iterations=2)
+#         combined = cv2.morphologyEx(combined, cv2.MORPH_OPEN, kernel, iterations=1)
+
+#         if cfg.save_intermediates and intermediates_root:
+#             inter_dir = Path(intermediates_root) / Path(src).parent.name
+#             imwrite_unicode(str(inter_dir / (Path(src).stem + "_mask_combined.png")), combined, quality=100)
+
+#         # Attempts to locate the object using increasingly permissive strategies
+#         attempt = 0
+#         used_strategy = None
+#         crop_img = None
+#         crop_mask = None
+
+#         while attempt < cfg.max_attempts:
+#             if attempt == 0:
+#                 target_mask = combined.copy(); try_margin = margin
+#             elif attempt == 1:
+#                 kernel2 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9,9))
+#                 target_mask = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel2, iterations=2)
+#                 try_margin = margin
+#             elif attempt == 2:
+#                 target_mask = mask_hsv.copy(); try_margin = margin + 0.02
+#             else:
+#                 target_mask = combined.copy(); try_margin = margin + cfg.margin_increment_steps[min(attempt - 3, len(cfg.margin_increment_steps)-1)]
+
+#             lamr = largest_contour_minarea_rect(target_mask, min_contour_area)
+#             if lamr:
+#                 box, cnt, cnt_area = lamr
+#                 crop_img = rotate_crop_by_box(img_bal, box, try_margin)
+#                 crop_mask = rotate_crop_by_box(target_mask, box, try_margin)
+#                 used_strategy = f"minarea_attempt_{attempt}"
+#             else:
+#                 crop_img = None; crop_mask = None
+
+#             if crop_img is not None and crop_img.size:
+#                 coverage = compute_mask_coverage((crop_mask>0).astype(np.uint8), crop_img.shape[:2])
+#                 meta['coverage'] = float(coverage)
+#                 if coverage >= cfg.crop_mask_coverage_threshold:
+#                     meta['status'] = 'ok'
+#                     break
+#             attempt += 1
+
+#         # KMeans fallback (only if enabled and sklearn present)
+#         if (crop_img is None or meta.get('coverage',0.0) < cfg.crop_mask_coverage_threshold) and HAS_SKLEARN and not cfg.fast:
+#             km_mask = mask_hsv_kmeans(img_bal, downscale=cfg.sample_downscale, n_clusters=cfg.kmeans_clusters)
+#             if km_mask is not None:
+#                 if cfg.save_intermediates and intermediates_root:
+#                     inter_dir = Path(intermediates_root) / Path(src).parent.name
+#                     imwrite_unicode(str(inter_dir / (Path(src).stem + "_mask_kmeans.png")), km_mask, quality=100)
+#                 lamr2 = largest_contour_minarea_rect(km_mask, max(200, int(min_contour_area/2)))
+#                 if lamr2:
+#                     box2, cnt2, area2 = lamr2
+#                     crop_img2 = rotate_crop_by_box(img_bal, box2, margin + 0.02)
+#                     crop_mask2 = rotate_crop_by_box(km_mask, box2, margin + 0.02)
+#                     cov2 = compute_mask_coverage((crop_mask2>0).astype(np.uint8), crop_img2.shape[:2])
+#                     if cov2 >= cfg.crop_mask_coverage_threshold:
+#                         crop_img = crop_img2; crop_mask = crop_mask2
+#                         used_strategy = 'kmeans_minarea'
+#                         meta['coverage'] = float(cov2); meta['status'] = 'ok'
+
+#         # Axis bbox fallback
+#         if (crop_img is None) or (meta.get('coverage',0.0) < cfg.crop_mask_coverage_threshold):
+#             cnt_bbox = largest_component_bbox_from_mask(combined, min_area=max(50, int(min_contour_area/4)))
+#             if cnt_bbox is not None:
+#                 x,y,w,h = cnt_bbox
+#                 pad = int(round(max(w,h) * (margin + 0.02)))
+#                 x0 = max(0, x - pad); y0 = max(0, y - pad); x1 = min(W0, x + w + pad); y1 = min(H0, y + h + pad)
+#                 crop_img = img_bal[y0:y1, x0:x1]
+#                 crop_mask = combined[y0:y1, x0:x1]
+#                 used_strategy = 'axis_bbox_fallback'
+#                 cov = compute_mask_coverage((crop_mask>0).astype(np.uint8), crop_img.shape[:2])
+#                 meta['coverage'] = float(cov)
+#                 if cov >= cfg.crop_mask_coverage_threshold:
+#                     meta['status'] = 'ok'
+
+#         # Center fallback
+#         if (crop_img is None) or (meta.get('coverage',0.0) < cfg.crop_mask_coverage_threshold):
+#             side = int(round(min(H0, W0) * 0.85))
+#             cx, cy = W0//2, H0//2
+#             x0 = max(0, cx - side//2); y0 = max(0, cy - side//2)
+#             x1 = min(W0, x0 + side); y1 = min(H0, y0 + side)
+#             crop_img = img_bal[y0:y1, x0:x1]
+#             used_strategy = 'center_fallback'
+#             crop_mask = combined[y0:y1, x0:x1]
+#             meta['coverage'] = float(compute_mask_coverage((crop_mask>0).astype(np.uint8), crop_img.shape[:2]))
+#             meta['status'] = 'fallback_center'
+
+#         if crop_img is None or crop_img.size == 0:
+#             meta['status'] = 'crop_failed'
+#             logging.error("Crop failed entirely for %s", src)
+#             return meta
+
+#         # Resize and save
+#         th, tw = cfg.target_size
+#         out = resized_fill(crop_img, th, tw)
+
+#         if cfg.save_intermediates and intermediates_root:
+#             inter_dir = Path(intermediates_root) / Path(src).parent.name
+#             ensure_dir(str(inter_dir))
+#             imwrite_unicode(str(inter_dir / (Path(src).stem + "_crop_raw.jpg")), crop_img, quality=95)
+#             if crop_mask is not None:
+#                 imwrite_unicode(str(inter_dir / (Path(src).stem + "_crop_mask.png")), crop_mask, quality=100)
+
+#         Path(dst).parent.mkdir(parents=True, exist_ok=True)
+#         if Path(dst).exists() and not cfg.force:
+#             meta['status'] = 'skipped'
+#             return meta
+#         saved = imwrite_unicode(dst, out, quality=cfg.save_quality)
+#         if not saved:
+#             meta['status'] = 'save_failed'
+#             return meta
+
+#         meta['status'] = 'ok' if meta.get('status') != 'fallback_center' else 'fallback_center'
+#         meta['used_strategy'] = used_strategy
+#         meta['final_w'] = int(tw); meta['final_h'] = int(th)
+#         return meta
+
+#     except Exception as e:
+#         logging.exception("Exception processing %s: %s", src, e)
+#         meta['status'] = 'error'
+#         meta['exception'] = str(e)
+#         return meta
 
 
 # ----------------------------
 # Utilities used in pipeline
 # ----------------------------
 
-def largest_contour_minarea_rect(mask: np.ndarray, min_area: int):
-    cnts, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not cnts:
-        return None
-    areas = [cv2.contourArea(c) for c in cnts]
-    idx = int(np.argmax(areas))
-    if areas[idx] < min_area:
-        return None
-    cnt = cnts[idx]
-    rect = cv2.minAreaRect(cnt)
-    box = cv2.boxPoints(rect).astype(int)
-    return box, cnt, areas[idx]
+# def largest_contour_minarea_rect(mask: np.ndarray, min_area: int):
+#     cnts, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+#     if not cnts:
+#         return None
+#     areas = [cv2.contourArea(c) for c in cnts]
+#     idx = int(np.argmax(areas))
+#     if areas[idx] < min_area:
+#         return None
+#     cnt = cnts[idx]
+#     rect = cv2.minAreaRect(cnt)
+#     box = cv2.boxPoints(rect).astype(int)
+#     return box, cnt, areas[idx]
 
 
-def largest_component_bbox_from_mask(mask: np.ndarray, min_area: int):
-    cnts, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not cnts:
-        return None
-    areas = [cv2.contourArea(c) for c in cnts]
-    idx = int(np.argmax(areas))
-    if areas[idx] < min_area:
-        return None
-    x,y,w,h = cv2.boundingRect(cnts[idx])
-    return (x,y,w,h)
+# def largest_component_bbox_from_mask(mask: np.ndarray, min_area: int):
+#     cnts, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+#     if not cnts:
+#         return None
+#     areas = [cv2.contourArea(c) for c in cnts]
+#     idx = int(np.argmax(areas))
+#     if areas[idx] < min_area:
+#         return None
+#     x,y,w,h = cv2.boundingRect(cnts[idx])
+#     return (x,y,w,h)
 
 
 # ----------------------------
@@ -656,59 +686,59 @@ def collect_input_mapping(raw_dir: str) -> Dict[str, List[str]]:
     return mapping
 
 
-def autotune_parameters(cfg: PreprocessConfig, sample_n: int = 30) -> Dict[str, Any]:
-    np.random.seed(cfg.seed)
-    mapping = collect_input_mapping(cfg.raw_dir)
-    paths = []
-    for cls, files in mapping.items():
-        paths.extend(files)
-    if not paths:
-        raise FileNotFoundError("No files found for autotune")
-    sample_n = min(sample_n, len(paths))
-    samples = list(np.random.choice(paths, sample_n, replace=False))
-    margins_to_try = [0.02, 0.04, 0.06, 0.08, 0.10, 0.14, 0.18]
-    good_margins = []
-    logging.info("Autotune: sampling %d images", len(samples))
-    for p in samples:
-        img = load_image_exif(p, use_exif=cfg.use_exif)
-        if img is None:
-            continue
-        img_bal = prepare_image(img, cfg)
-        combined = mask_by_hsv_adaptive(img_bal)
-        combined = cv2.bitwise_or(combined, mask_by_otsu(img_bal))
-        combined = cv2.bitwise_or(combined, mask_by_edges(img_bal))
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
-        combined = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel, iterations=2)
-        area = float(img.shape[0] * img.shape[1])
-        min_contour_area = max(int(area * cfg.min_contour_area_fraction), 100)
-        found_good = False
-        for m in margins_to_try:
-            lamr = largest_contour_minarea_rect(combined, min_contour_area)
-            if lamr:
-                box, cnt, cnt_area = lamr
-                crop_img = rotate_crop_by_box(img_bal, box, m)
-                crop_mask = rotate_crop_by_box(combined, box, m)
-                cov = compute_mask_coverage((crop_mask > 0).astype(np.uint8), crop_img.shape[:2])
-                if cov >= cfg.crop_mask_coverage_threshold:
-                    good_margins.append(m); found_good = True; break
-        if not found_good and HAS_SKLEARN and not cfg.fast:
-            kmask = mask_hsv_kmeans(img_bal, downscale=cfg.sample_downscale, n_clusters=cfg.kmeans_clusters)
-            if kmask is not None:
-                lamr2 = largest_contour_minarea_rect(kmask, max(200, int(min_contour_area/2)))
-                if lamr2:
-                    box2, cnt2, _ = lamr2
-                    m2 = cfg.margin
-                    crop_img = rotate_crop_by_box(img_bal, box2, m2)
-                    crop_mask = rotate_crop_by_box(kmask, box2, m2)
-                    cov2 = compute_mask_coverage((crop_mask>0).astype(np.uint8), crop_img.shape[:2])
-                    if cov2 >= cfg.crop_mask_coverage_threshold:
-                        good_margins.append(m2)
-    if not good_margins:
-        logging.warning("Autotune found nothing consistent; using default margin %.3f", cfg.margin)
-        return {"margin": cfg.margin}
-    chosen = float(np.median(np.array(good_margins)))
-    logging.info("Autotune chosen margin = %.4f (from %d good samples)", chosen, len(good_margins))
-    return {"margin": chosen}
+# def autotune_parameters(cfg: PreprocessConfig, sample_n: int = 30) -> Dict[str, Any]:
+#     np.random.seed(cfg.seed)
+#     mapping = collect_input_mapping(cfg.raw_dir)
+#     paths = []
+#     for cls, files in mapping.items():
+#         paths.extend(files)
+#     if not paths:
+#         raise FileNotFoundError("No files found for autotune")
+#     sample_n = min(sample_n, len(paths))
+#     samples = list(np.random.choice(paths, sample_n, replace=False))
+#     margins_to_try = [0.02, 0.04, 0.06, 0.08, 0.10, 0.14, 0.18]
+#     good_margins = []
+#     logging.info("Autotune: sampling %d images", len(samples))
+#     for p in samples:
+#         img = load_image_exif(p, use_exif=cfg.use_exif)
+#         if img is None:
+#             continue
+#         img_bal = prepare_image(img, cfg)
+#         combined = mask_by_hsv_adaptive(img_bal)
+#         combined = cv2.bitwise_or(combined, mask_by_otsu(img_bal))
+#         combined = cv2.bitwise_or(combined, mask_by_edges(img_bal))
+#         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
+#         combined = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel, iterations=2)
+#         area = float(img.shape[0] * img.shape[1])
+#         min_contour_area = max(int(area * cfg.min_contour_area_fraction), 100)
+#         found_good = False
+#         for m in margins_to_try:
+#             lamr = largest_contour_minarea_rect(combined, min_contour_area)
+#             if lamr:
+#                 box, cnt, cnt_area = lamr
+#                 crop_img = rotate_crop_by_box(img_bal, box, m)
+#                 crop_mask = rotate_crop_by_box(combined, box, m)
+#                 cov = compute_mask_coverage((crop_mask > 0).astype(np.uint8), crop_img.shape[:2])
+#                 if cov >= cfg.crop_mask_coverage_threshold:
+#                     good_margins.append(m); found_good = True; break
+#         if not found_good and HAS_SKLEARN and not cfg.fast:
+#             kmask = mask_hsv_kmeans(img_bal, downscale=cfg.sample_downscale, n_clusters=cfg.kmeans_clusters)
+#             if kmask is not None:
+#                 lamr2 = largest_contour_minarea_rect(kmask, max(200, int(min_contour_area/2)))
+#                 if lamr2:
+#                     box2, cnt2, _ = lamr2
+#                     m2 = cfg.margin
+#                     crop_img = rotate_crop_by_box(img_bal, box2, m2)
+#                     crop_mask = rotate_crop_by_box(kmask, box2, m2)
+#                     cov2 = compute_mask_coverage((crop_mask>0).astype(np.uint8), crop_img.shape[:2])
+#                     if cov2 >= cfg.crop_mask_coverage_threshold:
+#                         good_margins.append(m2)
+#     if not good_margins:
+#         logging.warning("Autotune found nothing consistent; using default margin %.3f", cfg.margin)
+#         return {"margin": cfg.margin}
+#     chosen = float(np.median(np.array(good_margins)))
+#     logging.info("Autotune chosen margin = %.4f (from %d good samples)", chosen, len(good_margins))
+#     return {"margin": chosen}
 
 
 def run_pipeline(cfg: PreprocessConfig, tuned: Optional[Dict[str,Any]] = None):
@@ -913,12 +943,12 @@ def main():
     Path(cfg.out_dir).mkdir(parents=True, exist_ok=True)
 
     tuned = None
-    if cfg.autotune_samples:
-        try:
-            tuned = autotune_parameters(cfg, sample_n=cfg.autotune_samples)
-            logging.info("Autotune result: %s", str(tuned))
-        except Exception:
-            logging.exception("Autotune failed; continuing with defaults")
+    # if cfg.autotune_samples:
+    #     try:
+    #         tuned = autotune_parameters(cfg, sample_n=cfg.autotune_samples)
+    #         logging.info("Autotune result: %s", str(tuned))
+    #     except Exception:
+    #         logging.exception("Autotune failed; continuing with defaults")
 
     run_pipeline(cfg, tuned)
 
