@@ -1,0 +1,53 @@
+# ===============================
+# Core Python Libraries
+# ===============================
+numpy
+pandas
+matplotlib
+seaborn
+scikit-learn
+scipy
+
+# ===============================
+# Computer Vision & Image Processing
+# ===============================
+opencv-python
+opencv-python-headless
+scikit-image
+Pillow
+
+# ===============================
+# Deep Learning (Training & Inference)
+# ===============================
+tensorflow>=2.12
+keras
+h5py
+
+# ===============================
+# Model Optimization & Deployment
+# ===============================
+tensorflow-datasets
+tensorflow-hub
+tflite-runtime
+
+# ===============================
+# IoT & Communication
+# ===============================
+paho-mqtt
+firebase-admin
+requests
+
+# ===============================
+# Dashboard / Web
+# ===============================
+flask
+flask-cors
+gunicorn
+
+# ===============================
+# Jupyter Notebook & Utils
+# ===============================
+jupyter
+notebook
+ipykernel
+tqdm
