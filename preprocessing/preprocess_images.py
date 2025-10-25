@@ -458,23 +458,27 @@ def prepare_image(img: np.ndarray, cfg: PreprocessConfig) -> np.ndarray:
     return img_bal
 
 def process_single_image(src: str, dst: str, cfg: PreprocessConfig, intermediates_root: Optional[str] = None, tuned_params: Optional[Dict[str,Any]] = None) -> Dict[str,Any]:
+    """Simplified image processing: color balance, CLAHE, and resize (no cropping)."""
     meta = {"src": src, "dst": dst, "status": "unknown", "timestamp": time.strftime(cfg.timestamp_format)}
     try:
         img = load_image_exif(src, use_exif=cfg.use_exif)
         if img is None:
             meta["status"] = "read_failed"
+            logging.warning("Failed to read %s", src)
             return meta
 
-        # Preprocessing warna
+        # Basic preprocessing (white balance + CLAHE)
         img_bal = prepare_image(img, cfg)
 
-        # ⚠️ Tidak resize apapun di sini
-        out = img_bal.copy()
+        # Resize ke ukuran target
+        th, tw = cfg.target_size
+        out = cv2.resize(img_bal, (tw, th), interpolation=cv2.INTER_AREA)
 
+        # Simpan hasil
         ensure_dir(str(Path(dst).parent))
         saved = imwrite_unicode(dst, out, quality=cfg.save_quality)
         meta["status"] = "ok" if saved else "save_failed"
-        meta["final_w"], meta["final_h"] = out.shape[1], out.shape[0]
+        meta["final_w"], meta["final_h"] = tw, th
         return meta
 
     except Exception as e:
@@ -482,6 +486,7 @@ def process_single_image(src: str, dst: str, cfg: PreprocessConfig, intermediate
         meta["status"] = "error"
         meta["exception"] = str(e)
         return meta
+
 
 # def process_single_image(src: str, dst: str, cfg: PreprocessConfig, intermediates_root: Optional[str] = None, tuned_params: Optional[Dict[str,Any]] = None) -> Dict[str,Any]:
 #     meta = {"src": src, "dst": dst, "status": "unknown", "timestamp": time.strftime(cfg.timestamp_format)}
