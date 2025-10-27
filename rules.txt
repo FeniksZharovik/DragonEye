@@ -1,0 +1,15 @@
+Citra mentah
+   ↓
+Image Acquisition
+   ↓
+Preprocessing (denoise, enhance, normalize)
+   ↓
+Segmentation / ROI
+   ↓
+Feature Extraction (manual atau otomatis oleh CNN)
+   ↓
+Data Augmentation
+   ↓
+Dataset Splitting
+   ↓
+Training Model AI
