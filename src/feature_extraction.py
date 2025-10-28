@@ -1,78 +1,78 @@
 import cv2
 import numpy as np
 import os
+from skimage.feature import local_binary_pattern
+import matplotlib.pyplot as plt
 
 # Folder Path
-processed_data_path = r'E:\DragonEye\dataset\Processed'
+segmented_data_path = r'E:\DragonEye\dataset\segmented'  # Gantilah dengan jalur folder segmented
+output_data_path = r'E:\DragonEye\dataset\features'  # Gantilah dengan jalur folder output untuk hasil fitur
 
 # Fungsi untuk ekstraksi fitur warna (misalnya, histogram warna)
 def extract_color_features(image):
-    # Menghitung histogram warna untuk citra RGB
     hist_r = cv2.calcHist([image], [0], None, [256], [0, 256])
     hist_g = cv2.calcHist([image], [1], None, [256], [0, 256])
     hist_b = cv2.calcHist([image], [2], None, [256], [0, 256])
-
-    # Normalisasi histogram untuk memudahkan perbandingan
     hist_r /= hist_r.sum()
     hist_g /= hist_g.sum()
     hist_b /= hist_b.sum()
     
-    # Fitur warna adalah kombinasi dari histogram R, G, B
     color_features = np.concatenate([hist_r.flatten(), hist_g.flatten(), hist_b.flatten()])
     return color_features
 
-# Fungsi untuk ekstraksi fitur tekstur (menggunakan LBP atau GLCM)
 def extract_texture_features(image):
-    # Convert image to grayscale
     gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    
-    # Menghitung Local Binary Pattern (LBP) untuk tekstur
     radius = 1
     n_points = 8 * radius
-    lbp = cv2.localBinaryPattern(gray_image, n_points, radius, method="uniform")
-    
-    # Menghitung histogram LBP
-    lbp_hist = cv2.calcHist([lbp], [0], None, [256], [0, 256])
-    lbp_hist /= lbp_hist.sum()  # Normalisasi
-    
-    return lbp_hist.flatten()
+    lbp = local_binary_pattern(gray_image, n_points, radius, method="uniform")
+    lbp_hist, _ = np.histogram(lbp.ravel(), bins=np.arange(0, 11), range=(0, 10))
+    lbp_hist = lbp_hist.astype("float")
+    lbp_hist /= lbp_hist.sum()
+    lbp_image = np.uint8(lbp * 255 / (n_points))
+    return lbp_hist.flatten(), lbp_image
 
-# Fungsi untuk ekstraksi fitur ukuran (misalnya, area dari objek yang terdeteksi)
 def extract_size_features(image):
-    # Menggunakan threshold untuk memisahkan objek dari latar belakang
     gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     _, thresh = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY)
-    
-    # Menemukan kontur pada citra threshold
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    # Menghitung area dari semua kontur
     areas = [cv2.contourArea(c) for c in contours]
     size_features = np.array(areas)
-    
-    return size_features
+    contour_image = np.zeros_like(image)
+    cv2.drawContours(contour_image, contours, -1, (0, 255, 0), 2)
+    return size_features, contour_image
 
-# Fungsi utama untuk ekstraksi semua fitur
 def extract_all_features():
     features = []
-    for filename in os.listdir(processed_data_path):
-        if filename.endswith(('.jpg', '.png', '.jpeg')):
-            image_path = os.path.join(processed_data_path, filename)
-            print(f"Extracting features from {filename}...")
-            image = cv2.imread(image_path)
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            
-            # Ekstraksi fitur
-            color_features = extract_color_features(image_rgb)
-            texture_features = extract_texture_features(image_rgb)
-            size_features = extract_size_features(image_rgb)
-            
-            # Gabungkan semua fitur dalam satu array
-            all_features = np.concatenate([color_features, texture_features, size_features])
-            features.append(all_features)
+    for root, dirs, files in os.walk(segmented_data_path):
+        for filename in files:
+            if filename.endswith(('.jpg', '.png', '.jpeg')):
+                image_path = os.path.join(root, filename)
+                print(f"Extracting features from {filename}...")
+                image = cv2.imread(image_path)
+                if image is None:
+                    print(f"Warning: {filename} could not be read!")
+                    continue
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                color_features = extract_color_features(image_rgb)
+                texture_features, lbp_image = extract_texture_features(image_rgb)
+                size_features, contour_image = extract_size_features(image_rgb)
+                all_features = np.concatenate([color_features, texture_features, size_features])
+                features.append(all_features)
+
+                # Menentukan folder berdasarkan kelas atau nama file
+                class_folder = os.path.basename(root)  # Nama folder sebagai kelas
+                class_output_path = os.path.join(output_data_path, class_folder)
+                if not os.path.exists(class_output_path):
+                    os.makedirs(class_output_path)
+
+                lbp_output_path = os.path.join(class_output_path, f"lbp_{filename}")
+                contour_output_path = os.path.join(class_output_path, f"contour_{filename}")
+
+                cv2.imwrite(lbp_output_path, lbp_image)
+                cv2.imwrite(contour_output_path, contour_image)
+                print(f"Saved visualizations for {filename} at {lbp_output_path} and {contour_output_path}")
     
     return np.array(features)
 
-# Memulai ekstraksi fitur
 features = extract_all_features()
 print(f"Extracted features: {features.shape}")
