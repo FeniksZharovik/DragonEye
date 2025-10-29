@@ -13,3 +13,37 @@ Data Augmentation
 Dataset Splitting
    ↓
 Training Model AI
+
+
+CNN BASED
+
+Citra Mentah
+   ↓
+Image Acquisition
+   ↓
+(Opsional) Preprocessing ringan (resize, normalize)
+   ↓
+(Opsional) Segmentation / ROI (jika ada background tidak relevan)
+   ↓
+Data Augmentation (sangat penting)
+   ↓
+Dataset Splitting
+   ↓
+Training Model CNN (fit() langsung ke citra)
+
+
+CNN RECOM
+
+Citra Mentah
+   ↓
+Image Acquisition
+   ↓
+Preprocessing ringan (resize, normalize)
+   ↓
+Data Augmentation (rotasi, flip, brightness, zoom)
+   ↓
+Dataset Splitting (train / val / test)
+   ↓
+Training Model CNN (end-to-end)
+   ↓
+Evaluation
