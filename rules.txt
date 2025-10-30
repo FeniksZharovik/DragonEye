@@ -47,3 +47,5 @@ Dataset Splitting (train / val / test)
 Training Model CNN (end-to-end)
    ↓
 Evaluation
+
+model : VGG-19, ResNet-50/101, [EfficientNetB0], EfficientNetB2
