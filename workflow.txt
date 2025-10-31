@@ -1,0 +1,82 @@
+Citra mentah
+   ↓
+Image Acquisition
+   ↓
+Preprocessing (denoise, enhance, normalize)
+   ↓
+Segmentation / ROI
+   ↓
+Feature Extraction (manual atau otomatis oleh CNN)
+   ↓
+Data Augmentation
+   ↓
+Dataset Splitting
+   ↓
+Training Model AI
+
+
+CNN BASED
+
+Citra Mentah
+   ↓
+Image Acquisition
+   ↓
+(Opsional) Preprocessing ringan (resize, normalize)
+   ↓
+(Opsional) Segmentation / ROI (jika ada background tidak relevan)
+   ↓
+Data Augmentation (sangat penting)
+   ↓
+Dataset Splitting
+   ↓
+Training Model CNN (fit() langsung ke citra)
+
+
+CNN RECOM
+
+Citra Mentah
+   ↓
+Image Acquisition
+   ↓
+Preprocessing ringan (resize, normalize)
+   ↓
+Data Augmentation (rotasi, flip, brightness, zoom)
+   ↓
+Dataset Splitting (train / val / test)
+   ↓
+Training Model CNN (end-to-end)
+   ↓
+Evaluation
+
+model : VGG-19, ResNet-50/101, [EfficientNetB0], EfficientNetB2
+
+
+
+Fuzzy Mamdani
+
+
+Citra Buah Naga
+   ↓
+Preprocessing → Segmentasi
+   ↓
+Ekstraksi Fitur:
+   - Warna (Hue rata-rata)
+   - Tekstur (GLCM contrast)
+   - Ukuran (Area)
+   ↓
+Normalisasi Nilai Fitur
+   ↓
+Fuzzifikasi:
+   Warna = {Pucat, Merah, Merah_Tua}
+   Tekstur = {Kasar, Sedikit_Cacat, Halus}
+   Ukuran = {Kecil, Sedang, Besar}
+   ↓
+Inference (Aturan Mamdani):
+   IF Warna=Merah_Tua AND Tekstur=Halus AND Ukuran=Besar THEN Grade=A
+   IF Warna=Merah AND Tekstur=Sedikit_Cacat THEN Grade=B
+   IF Warna=Pucat OR Tekstur=Kasar THEN Grade=C
+   ↓
+Defuzzifikasi (Metode Centroid)
+   ↓
+Output:
+   “Grade B – Buah Sedang, Warna Merah, Tekstur Sedikit Cacat”
