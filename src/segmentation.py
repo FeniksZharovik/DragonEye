@@ -3,52 +3,56 @@ import numpy as np
 
 def segment_image(hsv):
     """
-    Segmentasi buah naga berdasarkan warna merah, hijau, dan kuning
-    dengan pendekatan adaptif.
+    Segmentasi buah naga dengan pembersihan background halus tanpa menghapus objek.
     """
 
-    # --- Warna merah / magenta ---
+    # --- Warna utama buah naga (merah, hijau, kuning) ---
     lower_red1 = np.array([0, 40, 40])
     upper_red1 = np.array([15, 255, 255])
     lower_red2 = np.array([160, 40, 40])
     upper_red2 = np.array([180, 255, 255])
+    lower_green = np.array([35, 40, 40])
+    upper_green = np.array([90, 255, 255])
+    lower_yellow = np.array([20, 40, 40])
+    upper_yellow = np.array([45, 255, 255])
 
-    # --- Warna hijau ---
-    lower_green = np.array([35, 30, 40])
-    upper_green = np.array([85, 255, 255])
-
-    # --- Warna kuning (transisi antara hijau dan merah) ---
-    lower_yellow = np.array([20, 30, 50])
-    upper_yellow = np.array([35, 255, 255])
-
-    # --- Gabungkan semua range warna ---
     mask_red = cv2.bitwise_or(cv2.inRange(hsv, lower_red1, upper_red1),
                               cv2.inRange(hsv, lower_red2, upper_red2))
     mask_green = cv2.inRange(hsv, lower_green, upper_green)
     mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
+    mask = cv2.bitwise_or(mask_red, cv2.bitwise_or(mask_green, mask_yellow))
 
-    # Gabungkan semua warna jadi satu mask besar
-    mask = cv2.bitwise_or(mask_red, mask_green)
-    mask = cv2.bitwise_or(mask, mask_yellow)
-
-    # --- Filter adaptif berdasarkan Saturation & Value ---
+    # --- Buang background putih / abu & bayangan ---
     s = hsv[:, :, 1]
     v = hsv[:, :, 2]
-    adaptive_mask = cv2.inRange(s, 30, 255)
-    adaptive_mask = cv2.bitwise_and(adaptive_mask, cv2.inRange(v, 40, 255))
-    mask = cv2.bitwise_and(mask, adaptive_mask)
+    bg_light = cv2.inRange(hsv, (0, 0, 160), (180, 60, 255))
+    bg_dark = cv2.inRange(hsv, (0, 0, 0), (180, 100, 50))
+    bg_mask = cv2.bitwise_or(bg_light, bg_dark)
+    mask = cv2.bitwise_and(mask, cv2.bitwise_not(bg_mask))
 
-    # --- Bersihkan noise kecil dan isi lubang ---
-    kernel = np.ones((7, 7), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    # --- Bersihkan noise dan haluskan tepi ---
+    kernel = np.ones((3, 3), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
 
-    # --- Ambil kontur terbesar (area buah utama) ---
+    # --- Refinement lembut untuk sisa tipis background ---
+    # Fokus: area terang tapi tidak terlalu jenuh (warna abu tipis di pinggir)
+    edge_refine = cv2.inRange(hsv, (0, 0, 130), (180, 70, 255))
+    edge_refine = cv2.GaussianBlur(edge_refine, (5, 5), 0)
+    edge_refine = cv2.dilate(edge_refine, kernel, iterations=1)
+    mask = cv2.bitwise_and(mask, cv2.bitwise_not(edge_refine))
+
+    # --- Ambil kontur terbesar (buah utama) ---
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if contours:
         filled_mask = np.zeros_like(mask)
         cv2.drawContours(filled_mask, [max(contours, key=cv2.contourArea)], -1, 255, -1)
         mask = filled_mask
 
-    segmented = cv2.bitwise_and(hsv, hsv, mask=mask)
-    return segmented, mask
+    # --- Feathering ringan untuk tepi (hilangkan garis keras) ---
+    mask_blur = cv2.GaussianBlur(mask, (3, 3), 0)
+    _, mask_final = cv2.threshold(mask_blur, 100, 255, cv2.THRESH_BINARY)
+
+    # --- Terapkan mask akhir ke citra ---
+    segmented = cv2.bitwise_and(hsv, hsv, mask=mask_final)
+    return segmented, mask_final
