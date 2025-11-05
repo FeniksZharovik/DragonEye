@@ -14,9 +14,9 @@ print(f"[INFO] Total gambar ditemukan: {len(image_paths)}")
 # 2. Buat file CSV untuk fitur
 with open(FEATURE_CSV, mode='w', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(["filename", "hue_mean", "texture_contrast", "area"])
+    writer.writerow(["filename", "area", "width", "height", "weight_est"])
 
-    # 3. Loop setiap gambar
+    # 3. Loop untuk memproses setiap gambar
     for path in image_paths:
         img_name = os.path.basename(path)
         print(f"[PROCESS] Memproses: {img_name}")
@@ -26,20 +26,20 @@ with open(FEATURE_CSV, mode='w', newline='') as file:
             print(f"⚠️ Gagal membaca {img_name}")
             continue
 
-        # Preprocessing
+        # Preprocessing gambar
         hsv = preprocess_image(img)
 
-        # Segmentasi
+        # Segmentasi gambar
         segmented, mask = segment_image(hsv)
 
-        # Ekstraksi fitur
-        hue, texture, area = extract_features(segmented, mask)
+        # Ekstraksi fitur (area, panjang, lebar, berat)
+        area, width, height, weight = extract_features(segmented, mask)
 
         # Simpan hasil segmentasi
         out_path = os.path.join(SEGMENTED_DIR, img_name)
         save_image(out_path, cv2.cvtColor(segmented, cv2.COLOR_HSV2BGR))
 
         # Simpan fitur ke CSV
-        writer.writerow([img_name, hue, texture, area])
+        writer.writerow([img_name, area, width, height, weight])
 
 print("✅ Selesai! Semua hasil disimpan di folder dataset/")
