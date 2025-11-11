@@ -7,39 +7,41 @@ from preprocessing import preprocess_image
 from segmentation import segment_image
 from feature_extraction import extract_features
 
-# 1. Load semua gambar
+# 1️⃣ Load semua gambar
 image_paths = load_all_images(RAW_DATA_DIR)
 print(f"[INFO] Total gambar ditemukan: {len(image_paths)}")
 
-# 2. Buat file CSV untuk fitur
+# 2️⃣ Buat file CSV untuk menyimpan fitur
 with open(FEATURE_CSV, mode='w', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(["filename", "area", "width", "height", "weight_est"])
+    # Tambahkan kolom hue_mean
+    writer.writerow(["filename", "area", "width", "height", "weight_est", "texture_score", "hue_mean"])
 
-    # 3. Loop untuk memproses setiap gambar
+    # 3️⃣ Loop setiap gambar
     for path in image_paths:
         img_name = os.path.basename(path)
         print(f"[PROCESS] Memproses: {img_name}")
 
         img = cv2.imread(path)
         if img is None:
-            print(f"⚠️ Gagal membaca {img_name}")
+            print(f" ⚠️ Gagal membaca {img_name}")
             continue
 
-        # Preprocessing gambar
+        # Preprocessing (ubah ke HSV, dsb.)
         hsv = preprocess_image(img)
 
-        # Segmentasi gambar
+        # Segmentasi
         segmented, mask = segment_image(hsv)
 
-        # Ekstraksi fitur (area, panjang, lebar, berat)
-        area, width, height, weight = extract_features(segmented, mask)
+        # Ekstraksi fitur (6 output sekarang)
+        area, width, height, weight, texture_score, hue_mean = extract_features(segmented, mask)
 
         # Simpan hasil segmentasi
         out_path = os.path.join(SEGMENTED_DIR, img_name)
         save_image(out_path, cv2.cvtColor(segmented, cv2.COLOR_HSV2BGR))
 
-        # Simpan fitur ke CSV
-        writer.writerow([img_name, area, width, height, weight])
+        # Simpan ke CSV
+        writer.writerow([img_name, area, width, height, weight, texture_score, hue_mean])
 
-print("✅ Selesai! Semua hasil disimpan di folder dataset/")
+print("\n[OK] Ekstraksi fitur selesai! Semua hasil disimpan di folder dataset/ dan file fitur di:")
+print(f"     {FEATURE_CSV}")

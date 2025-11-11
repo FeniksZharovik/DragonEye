@@ -10,13 +10,13 @@ df = pd.read_csv(file_path)
 print("Kolom yang ada dalam DataFrame:", df.columns)
 
 # Menambahkan kolom 'label_asli' berdasarkan awalan nama file
-# Logika: 'MT1_' -> 'A', 'MT2_' -> 'B', 'MT3_' -> 'C'
+# Logika: 'A_' -> 'A', 'B_' -> 'B', 'C_' -> 'C'
 def assign_label(filename):
-    if filename.startswith('MT1'):
+    if filename.startswith('A'):
         return 'A'
-    elif filename.startswith('MT2'):
+    elif filename.startswith('B'):
         return 'B'
-    elif filename.startswith('MT3'):
+    elif filename.startswith('C'):
         return 'C'
     else:
         return 'Unknown'  # Jika nilai tidak sesuai, kembalikan 'Unknown'
