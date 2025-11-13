@@ -15,7 +15,7 @@ print(f"[INFO] Total gambar ditemukan: {len(image_paths)}")
 with open(FEATURE_CSV, mode='w', newline='') as file:
     writer = csv.writer(file)
     # Tambahkan kolom hue_mean
-    writer.writerow(["filename", "area", "width", "height", "weight_est", "texture_score", "hue_mean"])
+    writer.writerow(["filename", "area_cm2", "width_cm", "height_cm", "weight_est_g", "texture_score", "hue_mean"])
 
     # 3️⃣ Loop setiap gambar
     for path in image_paths:
