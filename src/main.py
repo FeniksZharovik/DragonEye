@@ -11,13 +11,18 @@ from feature_extraction import extract_features
 image_paths = load_all_images(RAW_DATA_DIR)
 print(f"[INFO] Total gambar ditemukan: {len(image_paths)}")
 
-# 2️⃣ Buat file CSV untuk menyimpan fitur
-with open(FEATURE_CSV, mode='w', newline='') as file:
-    writer = csv.writer(file)
-    # Tambahkan kolom hue_mean
-    writer.writerow(["filename", "area_cm2", "width_cm", "height_cm", "weight_est_g", "texture_score", "hue_mean"])
+# 2️⃣ Buat file CSV untuk menyimpan fitur, pastikan CSV sudah ada, jika belum buat baru
+file_exists = os.path.exists(FEATURE_CSV)
 
-    # 3️⃣ Loop setiap gambar
+# 3️⃣ Mode 'a' digunakan agar data ditambahkan ke file yang sudah ada (append)
+with open(FEATURE_CSV, mode='a', newline='') as file:
+    writer = csv.writer(file)
+
+    # 4️⃣ Jika file CSV baru dibuat, tambahkan header kolom
+    if not file_exists:
+        writer.writerow(["filename", "area_cm2", "width_cm", "height_cm", "weight_est_g", "texture_score", "hue_mean"])
+
+    # 5️⃣ Loop setiap gambar
     for path in image_paths:
         img_name = os.path.basename(path)
         print(f"[PROCESS] Memproses: {img_name}")
