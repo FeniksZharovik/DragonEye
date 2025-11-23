@@ -11,42 +11,54 @@ from feature_extraction import extract_features
 image_paths = load_all_images(RAW_DATA_DIR)
 print(f"[INFO] Total gambar ditemukan: {len(image_paths)}")
 
-# 2️⃣ Buat file CSV untuk menyimpan fitur, pastikan CSV sudah ada, jika belum buat baru
+# 2️⃣ Cek apakah CSV sudah ada
 file_exists = os.path.exists(FEATURE_CSV)
 
-# 3️⃣ Mode 'a' digunakan agar data ditambahkan ke file yang sudah ada (append)
+# 3️⃣ Tulis ke CSV (append agar data baru tidak menimpa yang lama)
 with open(FEATURE_CSV, mode='a', newline='') as file:
     writer = csv.writer(file)
 
-    # 4️⃣ Jika file CSV baru dibuat, tambahkan header kolom
+    # 4️⃣ Jika CSV belum ada, buat header baru
     if not file_exists:
-        writer.writerow(["filename", "area_cm2", "width_cm", "height_cm", "weight_est_g", "texture_score", "hue_mean"])
+        writer.writerow([
+            "filename",
+            "length_cm",
+            "diameter_cm",
+            "weight_est_g",
+            "ratio_ld"
+        ])
 
-    # 5️⃣ Loop setiap gambar
+    # 5️⃣ Proses setiap gambar
     for path in image_paths:
         img_name = os.path.basename(path)
         print(f"[PROCESS] Memproses: {img_name}")
 
         img = cv2.imread(path)
         if img is None:
-            print(f" ⚠️ Gagal membaca {img_name}")
+            print(f" Gagal membaca {img_name}")
             continue
 
-        # Preprocessing (ubah ke HSV, dsb.)
+        # Preprocessing (HSV, noise removal, dsb.)
         hsv = preprocess_image(img)
 
         # Segmentasi
         segmented, mask = segment_image(hsv)
 
-        # Ekstraksi fitur (6 output sekarang)
-        area, width, height, weight, texture_score, hue_mean = extract_features(segmented, mask)
+        # Ekstraksi fitur (versi baru)
+        length_cm, diameter_cm, weight_est_g, ratio_ld = extract_features(segmented, mask)
 
-        # Simpan hasil segmentasi
+        # Simpan gambar hasil segmentasi
         out_path = os.path.join(SEGMENTED_DIR, img_name)
         save_image(out_path, cv2.cvtColor(segmented, cv2.COLOR_HSV2BGR))
 
-        # Simpan ke CSV
-        writer.writerow([img_name, area, width, height, weight, texture_score, hue_mean])
+        # Simpan data fitur ke CSV
+        writer.writerow([
+            img_name,
+            length_cm,
+            diameter_cm,
+            weight_est_g,
+            ratio_ld
+        ])
 
-print("\n[OK] Ekstraksi fitur selesai! Semua hasil disimpan di folder dataset/ dan file fitur di:")
-print(f"     {FEATURE_CSV}")
+print("\n[OK] Ekstraksi fitur selesai!")
+print(f"     File CSV tersimpan di: {FEATURE_CSV}")
