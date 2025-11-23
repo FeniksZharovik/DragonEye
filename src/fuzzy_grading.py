@@ -3,122 +3,104 @@ import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 
-# 1) Baca data fitur
+# 1) Baca data fitur (HARUS sudah ada kolom berikut)
 df = pd.read_csv(r"E:\DragonEye\dataset\features.csv")
 
-required_cols = ['area_cm2', 'weight_est_g', 'texture_score', 'hue_mean']
+required_cols = ['length_cm', 'diameter_cm', 'weight_est_g']
 for col in required_cols:
     if col not in df.columns:
         raise ValueError(f"Kolom '{col}' tidak ditemukan di features.csv.")
 
-# 2) Klasifikasi langsung berdasarkan berat (aturan yang kamu berikan)
-def grade_by_weight(weight_g):
-    if weight_g >= 350:
-        return 'A'
-    elif weight_g >= 250:
-        return 'B'
-    else:
-        return 'C'
+# 2) Hitung rasio ukuran-bobot
+df['ratio'] = df['weight_est_g'] / (df['length_cm'] * df['diameter_cm'] + 1e-9)
 
-df['grade_by_weight'] = df['weight_est_g'].apply(grade_by_weight)
+# 3) Normalisasi dengan percentile (lebih aman dari outlier)
+def normalize(series, p_low=5, p_high=95):
+    lo = np.percentile(series, p_low)
+    hi = np.percentile(series, p_high)
+    return np.clip((series - lo) / (hi - lo + 1e-9), 0, 1)
 
-# 3) Normalisasi berbasis distribusi (gunakan percentiles untuk menghindari outlier)
-def normalize_pct(series, low_pct=5, high_pct=95):
-    lo = np.percentile(series, low_pct)
-    hi = np.percentile(series, high_pct)
-    if hi == lo:
-        return np.clip((series - series.min()) / (series.max() - series.min() + 1e-9), 0, 1)
-    return np.clip((series - lo) / (hi - lo), 0, 1)
+df['length_norm'] = normalize(df['length_cm'])
+df['diameter_norm'] = normalize(df['diameter_cm'])
+df['weight_norm'] = normalize(df['weight_est_g'])
+df['ratio_norm']  = normalize(df['ratio'])
 
-df['area_norm'] = normalize_pct(df['area_cm2'])
-df['weight_norm'] = normalize_pct(df['weight_est_g'])
-df['texture_norm'] = normalize_pct(df['texture_score'])
-df['hue_norm'] = normalize_pct(df['hue_mean'])
+# 4) Buat fuzzy variables
+length = ctrl.Antecedent(np.linspace(0,1,101), 'length')
+diameter = ctrl.Antecedent(np.linspace(0,1,101), 'diameter')
+weight = ctrl.Antecedent(np.linspace(0,1,101), 'weight')
+ratio = ctrl.Antecedent(np.linspace(0,1,101), 'ratio')
 
-# 4) Membuat fuzzy controller (untuk ukuran, berat, tekstur, dan warna)
-ukuran = ctrl.Antecedent(np.linspace(0, 1, 101), 'ukuran')
-berat = ctrl.Antecedent(np.linspace(0, 1, 101), 'berat')
-tekstur = ctrl.Antecedent(np.linspace(0, 1, 101), 'tekstur')
-warna = ctrl.Antecedent(np.linspace(0, 1, 101), 'warna')
-kondisi = ctrl.Consequent(np.linspace(0, 100, 101), 'kondisi')
+grade = ctrl.Consequent(np.linspace(0,100,101), 'grade')
 
-# Definisi fuzzy set
-ukuran['kecil'] = fuzz.trimf(ukuran.universe, [0.0, 0.0, 0.4])
-ukuran['sedang'] = fuzz.trimf(ukuran.universe, [0.3, 0.55, 0.75])
-ukuran['besar'] = fuzz.trimf(ukuran.universe, [0.6, 1.0, 1.0])
+# Membership function
+length['small']  = fuzz.trimf(length.universe, [0.0, 0.0, 0.4])
+length['medium'] = fuzz.trimf(length.universe, [0.3, 0.55, 0.8])
+length['large']  = fuzz.trimf(length.universe, [0.6, 1.0, 1.0])
 
-berat['rendah'] = fuzz.trimf(berat.universe, [0.0, 0.0, 0.4])
-berat['sedang'] = fuzz.trimf(berat.universe, [0.3, 0.55, 0.75])
-berat['tinggi'] = fuzz.trimf(berat.universe, [0.6, 1.0, 1.0])
+diameter['small']  = fuzz.trimf(diameter.universe, [0.0, 0.0, 0.4])
+diameter['medium'] = fuzz.trimf(diameter.universe, [0.3, 0.55, 0.8])
+diameter['large']  = fuzz.trimf(diameter.universe, [0.6, 1.0, 1.0])
 
-tekstur['kasar'] = fuzz.trimf(tekstur.universe, [0.0, 0.0, 0.3])
-tekstur['normal'] = fuzz.trimf(tekstur.universe, [0.2, 0.45, 0.7])
-tekstur['halus'] = fuzz.trimf(tekstur.universe, [0.4, 0.7, 1.0])
+weight['low']   = fuzz.trimf(weight.universe, [0.0, 0.0, 0.4])
+weight['mid']   = fuzz.trimf(weight.universe, [0.3, 0.55, 0.8])
+weight['high']  = fuzz.trimf(weight.universe, [0.6, 1.0, 1.0])
 
-warna['gelap'] = fuzz.trimf(warna.universe, [0.0, 0.0, 0.4])
-warna['normal'] = fuzz.trimf(warna.universe, [0.3, 0.55, 0.8])
-warna['cerah'] = fuzz.trimf(warna.universe, [0.65, 1.0, 1.0])
+ratio['poor']   = fuzz.trimf(ratio.universe, [0.0, 0.0, 0.4])
+ratio['normal'] = fuzz.trimf(ratio.universe, [0.3, 0.55, 0.8])
+ratio['good']   = fuzz.trimf(ratio.universe, [0.6, 1.0, 1.0])
 
-kondisi['rotten'] = fuzz.trimf(kondisi.universe, [0, 0, 40])
-kondisi['defect'] = fuzz.trimf(kondisi.universe, [35, 55, 75])
-kondisi['good'] = fuzz.trimf(kondisi.universe, [65, 100, 100])
+grade['C'] = fuzz.trimf(grade.universe, [0, 0, 45])
+grade['B'] = fuzz.trimf(grade.universe, [35, 60, 85])
+grade['A'] = fuzz.trimf(grade.universe, [75, 100, 100])
 
-# 5) Definisikan aturan fuzzy untuk kombinasi ukuran, berat, tekstur, dan warna
+# 5) Definisikan aturan fuzzy
 rules = [
-    ctrl.Rule(ukuran['besar'] & berat['tinggi'], kondisi['good']),
-    ctrl.Rule(berat['tinggi'] & tekstur['halus'], kondisi['good']),
-    ctrl.Rule(ukuran['sedang'] & berat['sedang'] & tekstur['halus'], kondisi['good']),
-    ctrl.Rule(ukuran['sedang'] & berat['sedang'], kondisi['defect']),
-    ctrl.Rule(tekstur['kasar'] | berat['rendah'], kondisi['rotten']),
-    ctrl.Rule(warna['cerah'] & tekstur['halus'], kondisi['good']),
-    ctrl.Rule(warna['normal'] & tekstur['halus'], kondisi['good']),
-    ctrl.Rule(warna['normal'] & tekstur['normal'], kondisi['defect']),
-    ctrl.Rule(warna['gelap'] & tekstur['kasar'], kondisi['rotten']),
+    ctrl.Rule(weight['high'] & diameter['large'], grade['A']),
+    ctrl.Rule(weight['high'] & length['large'], grade['A']),
+    ctrl.Rule(weight['mid'] & diameter['medium'], grade['B']),
+    ctrl.Rule(ratio['good'], grade['A']),
+    ctrl.Rule(ratio['normal'], grade['B']),
+    ctrl.Rule(ratio['poor'] | weight['low'], grade['C']),
 ]
 
-ctrlsys = ctrl.ControlSystem(rules)
-sim = ctrl.ControlSystemSimulation(ctrlsys)
+control_sys = ctrl.ControlSystem(rules)
+sim = ctrl.ControlSystemSimulation(control_sys)
 
-# 6) Hitung skor fuzzy untuk setiap gambar dalam dataset
+# 6) Hitung fuzzy score per baris data
 fuzzy_scores = []
+
 for _, row in df.iterrows():
-    sim.input['ukuran'] = float(row['area_norm'])
-    sim.input['berat'] = float(row['weight_norm'])
-    sim.input['tekstur'] = float(row['texture_norm'])
-    sim.input['warna'] = float(row['hue_norm'])
+    sim.input['length'] = float(row['length_norm'])
+    sim.input['diameter'] = float(row['diameter_norm'])
+    sim.input['weight'] = float(row['weight_norm'])
+    sim.input['ratio'] = float(row['ratio_norm'])
+    
     try:
         sim.compute()
-        score = float(sim.output['kondisi'])
-    except Exception:
+        score = float(sim.output['grade'])
+    except:
         score = 0.0
+    
     fuzzy_scores.append(score)
 
 df['fuzzy_score'] = fuzzy_scores
 
-# 7) Gabungkan grading berdasarkan berat dan kualitas fuzzy
-def combine_grading(weight_grade, fuzzy_grade):
-    return f"{weight_grade} {fuzzy_grade}"
-
-# Tentukan fuzzy grading berdasarkan nilai output dari logika fuzzy
-def get_fuzzy_label(score):
-    if score >= 65:
-        return 'good'
-    elif score >= 40:
-        return 'defect'
+# 7) Konversi ke label final
+def get_label(score):
+    if score >= 70:
+        return 'A'
+    elif score >= 45:
+        return 'B'
     else:
-        return 'rotten'
+        return 'C'
 
-df['fuzzy_grade_label'] = df['fuzzy_score'].apply(get_fuzzy_label)
+df['final_grade'] = df['fuzzy_score'].apply(get_label)
 
-# 8) Gabungkan grading berdasarkan berat dan fuzzy grade untuk label akhir
-df['final_grade'] = df.apply(lambda row: combine_grading(row['grade_by_weight'], row['fuzzy_grade_label']), axis=1)
+# 8) Simpan hasil
+output = r"E:\DragonEye\dataset\graded_features.csv"
+df.to_csv(output, index=False, encoding='utf-8')
 
-# 9) Simpan hasil ke CSV
-output_path = r"E:\DragonEye\dataset\graded_features.csv"
-df.to_csv(output_path, index=False, encoding='utf-8')
-
-# 10) Tampilkan hasil
-print("[OK] Grading selesai!")
-print(df[['filename', 'area_cm2', 'weight_est_g', 'texture_score', 'final_grade']].head(10))
-print("\nJumlah tiap grade:")
+print("[OK] Fuzzy grading selesai!")
+print(df[['length_cm', 'diameter_cm', 'weight_est_g', 'ratio', 'final_grade']].head())
 print(df['final_grade'].value_counts())
