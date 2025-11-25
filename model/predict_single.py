@@ -118,6 +118,7 @@ def fuzzy_grade_single(length, diameter, weight, ratio):
     weight_n   = norm(weight, 150, 650)
     ratio_n    = norm(ratio, 1.0, 1.8)
 
+    # Score fuzzy tetap dihitung
     score = (
         0.35 * weight_n +
         0.25 * diameter_n +
@@ -125,9 +126,10 @@ def fuzzy_grade_single(length, diameter, weight, ratio):
         0.20 * ratio_n
     ) * 100
 
-    if score >= 70:
+    # Grade mengikuti standar BERAT
+    if weight > 350:
         label = "A"
-    elif score >= 45:
+    elif 250 <= weight <= 350:
         label = "B"
     else:
         label = "C"
