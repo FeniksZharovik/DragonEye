@@ -61,11 +61,12 @@ def fuzzy_grade_single(length_cm, diameter_cm, weight_g, ratio_val):
     sim.input['ratio'] = ratio_n
     
     sim.compute()
-    score = float(sim.output['grade'])  # 0–100
+    score = float(sim.output['grade'])  # 0–100  (score tetap digunakan)
 
-    if score >= 70:
+    # 🚨 DIUBAH: grade ditentukan oleh BERAT, bukan fuzzy score
+    if weight_g > 350:
         grade = "A"
-    elif score >= 45:
+    elif 250 <= weight_g <= 350:
         grade = "B"
     else:
         grade = "C"
