@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import math
 
 # ============================
 # 1. PREPROCESSING
@@ -63,34 +64,38 @@ def segment_image(hsv):
 
 
 # ============================
-# 3. FEATURE EXTRACTION
+# 3. FEATURE EXTRACTION (REVISED)
 # ============================
 
 def extract_features(segmented_img, mask):
+
     if mask is None or np.count_nonzero(mask) == 0:
-        return 0, 0, 0, 0
+        return 0.0, 0.0, 0.0, 0.0
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
-        return 0, 0, 0, 0
+        return 0.0, 0.0, 0.0, 0.0
 
     c = max(contours, key=cv2.contourArea)
-    area_px = float(cv2.contourArea(c))
     x, y, w_box, h_box = cv2.boundingRect(c)
 
+    # === sama seperti version batch
     pixel_per_cm = 102.0
     cm_per_pixel = 1.0 / pixel_per_cm
 
     length_cm = max(w_box, h_box) * cm_per_pixel * 0.9
     diameter_cm = min(w_box, h_box) * cm_per_pixel * 0.9
 
-    area_cm2 = area_px * (cm_per_pixel ** 2)
+    radius = diameter_cm / 2
+    volume_cm3 = math.pi * (radius ** 2) * length_cm
 
-    k = 2.0
-    p = 1.15
-    weight_est_g = k * (area_cm2 ** p)
+    density = 0.22     # rata-rata density buah naga
+    weight_est_g = density * volume_cm3
 
-    ratio = length_cm / diameter_cm if diameter_cm > 0 else 0
+    weight_est_g *= 1.32
+    weight_est_g = max(weight_est_g, 0)
+
+    ratio = length_cm / diameter_cm if diameter_cm > 0 else 0.0
 
     return (
         round(length_cm, 3),
@@ -101,15 +106,10 @@ def extract_features(segmented_img, mask):
 
 
 # ============================
-# 4. FUZZY GRADING (single image version)
+# 4. FUZZY GRADING (single image)
 # ============================
 
 def fuzzy_grade_single(length, diameter, weight, ratio):
-    lname = ["small", "medium", "large"]
-    dname = ["small", "medium", "large"]
-    wname = ["low", "mid", "high"]
-    rname = ["poor", "normal", "good"]
-
     def norm(value, lo, hi):
         return max(0, min(1, (value - lo) / (hi - lo + 1e-9)))
 
@@ -118,7 +118,6 @@ def fuzzy_grade_single(length, diameter, weight, ratio):
     weight_n   = norm(weight, 150, 650)
     ratio_n    = norm(ratio, 1.0, 1.8)
 
-    # Score fuzzy tetap dihitung
     score = (
         0.35 * weight_n +
         0.25 * diameter_n +
@@ -126,7 +125,6 @@ def fuzzy_grade_single(length, diameter, weight, ratio):
         0.20 * ratio_n
     ) * 100
 
-    # Grade mengikuti standar BERAT
     if weight > 350:
         label = "A"
     elif 250 <= weight <= 350:
@@ -138,7 +136,7 @@ def fuzzy_grade_single(length, diameter, weight, ratio):
 
 
 # ============================
-# 5. FINAL PREDICT FUNCTION
+# 5. FINAL PREDICT
 # ============================
 
 def predict_single_image(path):
