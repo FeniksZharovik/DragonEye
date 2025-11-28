@@ -20,7 +20,6 @@ def extract_features(segmented_img, mask):
 
     length_cm = max(w_box, h_box) * cm_per_pixel * 0.9
     diameter_cm = min(w_box, h_box) * cm_per_pixel * 0.9
-
     ratio = length_cm / diameter_cm if diameter_cm > 0 else 0.0
 
     # ----------------------------------------
