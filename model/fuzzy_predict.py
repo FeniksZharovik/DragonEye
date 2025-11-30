@@ -35,7 +35,6 @@ rules = [
     ctrl.Rule(weight['high'] & diameter['large'], grade['A']),
     ctrl.Rule(weight['high'] & length['large'], grade['A']),
     ctrl.Rule(weight['mid'] & diameter['medium'], grade['B']),
-    ctrl.Rule(ratio['good'], grade['A']),
     ctrl.Rule(ratio['normal'], grade['B']),
     ctrl.Rule(ratio['poor'] | weight['low'], grade['C']),
 ]

@@ -60,7 +60,6 @@ rules = [
     ctrl.Rule(weight['high'] & diameter['large'] & length['large'], grade['A']),
     ctrl.Rule(weight['mid'] & diameter['medium'], grade['B']),
     ctrl.Rule(weight['low'] | ratio['poor'] | length['small'], grade['C']),
-    ctrl.Rule(ratio['good'] & weight['mid'] & length['large'], grade['A']),
 ]
 
 control_sys = ctrl.ControlSystem(rules)
