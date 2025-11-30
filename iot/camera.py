@@ -3,10 +3,14 @@ import numpy as np
 import os
 import sys
 
-# Menambahkan folder 'model' ke sys.path agar dapat mengimpor predict_single.py
-sys.path.append(r"E:\DragonEye\model")  # Pastikan path ini sesuai dengan struktur folder kamu
+# =========================
+# IMPORT MODEL & MQTT SENDER
+# =========================
+sys.path.append(r"D:\Programming\Clone Github\DargonFruit_Grading\model")
+sys.path.append(r"D:\Programming\Clone Github\DargonFruit_Grading\iot")
 
-from predict_single import predict_single_image  # Mengimpor fungsi dari predict_single.py
+from predict_single import predict_single_image
+from mqtt_machine_bridge import send_grade   # ← Kirim grade via MQTT
 
 TARGET_SIZE = 3060
 
@@ -62,7 +66,7 @@ cap = cv2.VideoCapture(camera_index)
 
 
 # =========================
-# Loop Utama
+# LOOP UTAMA
 # =========================
 while True:
     ret, frame = cap.read()
@@ -76,6 +80,7 @@ while True:
     if h == 0 or w == 0:
         continue
 
+    # Crop ke 1:1
     side = min(h, w)
     x1 = (w - side) // 2
     y1 = (h - side) // 2
@@ -91,32 +96,28 @@ while True:
     key = cv2.waitKey(1)
 
     # =========================
-    # SAVE → always replace
+    # SAVE dan PROSES
     # =========================
     if key == ord('s'):
-        # Simpan gambar yang di-capture
         cv2.imwrite(SAVE_PATH, output)
-        print("[INFO] Gambar disimpan & replace:", SAVE_PATH)
+        print("[INFO] Gambar disimpan →", SAVE_PATH)
 
-        # Setelah gambar disimpan, proses gambar untuk grading
-        print("\nMemproses gambar baru...")
-
-        # Simpan file yang baru saja diambil
-        TEMP_DIR = r"E:\DragonEye\temp"
+        # Proses gambar untuk grading
+        TEMP_DIR = os.path.join(BASE_DIR, "temp")
         os.makedirs(TEMP_DIR, exist_ok=True)
 
         temp_path = os.path.join(TEMP_DIR, "temp_uploaded_image.jpg")
-        cv2.imwrite(temp_path, output)  # Simpan gambar sementara
+        cv2.imwrite(temp_path, output)
 
-        # Jalankan pipeline (preprocessing → segmentasi → fitur → fuzzy)
+        print("\nMemproses gambar...")
+
         try:
             result, err = predict_single_image(temp_path)
 
             if err:
-                print("Error dalam proses pipeline:", err)
+                print("[ERROR] Pipeline gagal:", err)
             else:
-                # Tampilkan hasil grading di terminal
-                print("\nHASIL ANALISIS GAMBAR (Pipeline Lengkap)")
+                print("\nHASIL ANALISIS GAMBAR")
                 print("Prediksi Grade :", result["grade"])
                 print("Akurasi Fuzzy  :", f"{result['score']:.1f}%")
                 print("Panjang        :", f"{result['length']:.2f} cm")
@@ -124,8 +125,13 @@ while True:
                 print("Berat Estimasi :", f"{result['weight']:.0f} g")
                 print("Rasio L/D      :", f"{result['ratio']:.2f}")
 
+                # =========================
+                # Kirim via MQTT
+                # =========================
+                send_grade(result["grade"])
+
         except Exception as e:
-            print("Terjadi kesalahan saat memproses gambar:", str(e))
+            print("Terjadi kesalahan:", e)
 
     if key == ord('q'):
         break
