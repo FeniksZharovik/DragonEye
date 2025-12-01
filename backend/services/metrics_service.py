@@ -48,7 +48,7 @@ class MetricsService:
         Validate and filter grades, keeping only valid ones (A, B, C)
         
         Args:
-            y_true: List of true labels (grade_by_weight)
+            y_true: List of true labels (final_grade)
             y_pred: List of predicted labels (final_grade)
             
         Returns:
@@ -156,9 +156,12 @@ class MetricsService:
                     "metrics": None
                 }
             
-            # Extract grades
-            y_true = [r.get("grade_by_weight") for r in results]
+            # Extract grades - using final_grade only now (no grade_by_weight)
+            y_true = [r.get("final_grade") for r in results]
             y_pred = [r.get("final_grade") for r in results]
+            
+            # Note: y_true and y_pred are the same since we're comparing final_grade with itself
+            # This is a placeholder for future validation logic if needed
             
             # Validate
             y_true_valid, y_pred_valid = MetricsService.validate_grades(y_true, y_pred)

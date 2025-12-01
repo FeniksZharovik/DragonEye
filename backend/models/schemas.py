@@ -10,7 +10,6 @@ from datetime import datetime
 # CREATE (input dari program)
 # ----------------------------
 class GradingResultCreate(BaseModel):
-    filename: str
     source: Optional[str] = None
 
     # PCV features
@@ -26,7 +25,6 @@ class GradingResultCreate(BaseModel):
     fuzzy_score: Optional[float] = None
 
     # Grading
-    grade_by_weight: Optional[str] = None
     final_grade: Optional[str] = None
 
     class Config:

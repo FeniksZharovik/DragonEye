@@ -16,14 +16,12 @@ def serialize_result(result) -> dict:
     """Convert SQLAlchemy model instance to dictionary, handling UUID serialization"""
     data = {
         "id": str(result.id) if hasattr(result.id, '__str__') else result.id,
-        "filename": result.filename,
         "length_cm": result.length_cm,
         "diameter_cm": result.diameter_cm,
         "weight_est_g": result.weight_est_g,
         "weight_actual_g": result.weight_actual_g,
         "ratio": result.ratio,
         "fuzzy_score": result.fuzzy_score,
-        "grade_by_weight": result.grade_by_weight,
         "final_grade": result.final_grade,
         "tanggal": result.tanggal.isoformat() if result.tanggal else None,
     }
@@ -31,32 +29,6 @@ def serialize_result(result) -> dict:
 
 
 # ✅ IMPORTANT: More specific routes MUST come before generic /{id} route!
-
-@router.get("/filename/{filename}", response_model=List[dict])
-def get_grading_results_by_filename(
-    filename: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Fetch grading results by filename.
-    
-    Parameters:
-    - filename: Name of the file to search for
-    """
-    try:
-        service = GradingresultService(db)
-        results = service.get_by_filename(filename)
-        
-        if not results:
-            return []
-        
-        return [serialize_result(r) for r in results]
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error fetching grading results by filename: {str(e)}"
-        )
-
 
 @router.get("/all", response_model=dict)
 def get_all_grading_results(

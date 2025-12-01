@@ -27,6 +27,7 @@ from auth.api_login import router as api_auth_router
 from routes.metrics_routes import router as metrics_router
 from routes.user import router as user_router
 from controllers.GradingresultController import router as gradingresult_router
+from controllers.InsertdataController import router as insertdata_router
 
 # Request models
 class GradeRequest(BaseModel):
@@ -172,6 +173,7 @@ app.include_router(camera_router, prefix="/camera", tags=["Camera"])
 app.include_router(device_router, prefix="/device", tags=["Device / IoT"])
 app.include_router(api_auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(user_router, prefix="/users", tags=["Users"])
+app.include_router(insertdata_router, prefix="/api", tags=["Insert Data"])
 
 # ==========================
 # ROOT & HEALTH

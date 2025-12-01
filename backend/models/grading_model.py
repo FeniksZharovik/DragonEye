@@ -12,9 +12,6 @@ class GradingResult(Base):
     # Primary key
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
 
-    # Metadata
-    filename = Column(String, nullable=False)
-
     # PCV features (sesuai extract_features di main.py)
     length_cm = Column(Float, nullable=True)       # max(w_box, h_box) * cm_per_pixel * 0.9
     diameter_cm = Column(Float, nullable=True)     # min(w_box, h_box) * cm_per_pixel * 0.9
@@ -27,17 +24,14 @@ class GradingResult(Base):
     # Fuzzy result (score-only)
     fuzzy_score = Column(Float, nullable=True)
 
-    # Weight-based grade (deterministic thresholds)
-    grade_by_weight = Column(String, nullable=True)
-
-    # Final decision (weight determines final grade; fuzzy for reporting)
+    # Final decision grade
     final_grade = Column(String, nullable=True)
 
     # Timestamp (matches existing database column)
     tanggal = Column(DateTime(timezone=True), server_default=func.now(), nullable=True, index=True)
 
     def __repr__(self):
-        return f"<GradingResult id={self.id} filename={self.filename} final_grade={self.final_grade} weight_est={self.weight_est_g}>"
+        return f"<GradingResult id={self.id} final_grade={self.final_grade} weight_est={self.weight_est_g}>"
 
 # (Optional) combined index defined in Python (already indexed individually above)
 # Index('ix_grading_results_source_created', GradingResult.source, GradingResult.created_at)

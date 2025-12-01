@@ -47,14 +47,12 @@ def _safe_normalize(value: float, series, lo: Optional[float] = None, hi: Option
 def _build_result_payload(db_record: GradingResult) -> Dict[str, Any]:
     return {
         "id": str(db_record.id),
-        "filename": db_record.filename,
         "length_cm": db_record.length_cm,
         "diameter_cm": db_record.diameter_cm,
         "weight_est_g": db_record.weight_est_g,
         "weight_actual_g": db_record.weight_actual_g,
         "ratio": db_record.ratio,
         "fuzzy_score": float(db_record.fuzzy_score) if db_record.fuzzy_score else None,
-        "grade_by_weight": db_record.grade_by_weight,
         "final_grade": db_record.final_grade,
     }
 
@@ -100,7 +98,6 @@ def run_fuzzy_and_save(
     result, err = process_image(
         image_bgr=image_bgr,
         reference_df=reference_df,
-        filename=filename,
         db=db,
         publish_mqtt=publish_mqtt,
         weight_actual_g=weight_actual_g
@@ -114,7 +111,6 @@ def run_fuzzy_and_save(
 def process_image(
     image_bgr: np.ndarray,
     reference_df,
-    filename: str,
     db: Session,
     publish_mqtt: bool = True,
     fuzzy_fallback_on_invalid_weight: bool = True,
@@ -173,10 +169,10 @@ def process_image(
     except Exception:
         primary_weight = weight_est_g
 
-    grade_by_weight = grade_from_weight(primary_weight)
+    # Determine final grade based on weight
+    final_grade = grade_from_weight(primary_weight)
 
-    # fallback fuzzy
-    final_grade = grade_by_weight
+    # fallback to fuzzy score if weight is invalid
     if (weight_actual_g is None or weight_actual_g <= 0) and fuzzy_fallback_on_invalid_weight:
         if fuzzy_score >= 70:
             final_grade = "A"
@@ -189,14 +185,12 @@ def process_image(
     # --- 7. Save to database ---
     try:
         db_record = GradingResult(
-            filename=filename,
             length_cm=length_cm,
             diameter_cm=diameter_cm,
             weight_est_g=weight_est_g,
             weight_actual_g=weight_actual_g,
             ratio=ratio,
             fuzzy_score=float(fuzzy_score),
-            grade_by_weight=grade_by_weight,
             final_grade=final_grade
         )
 

@@ -74,7 +74,6 @@ def process_and_grade_image(img, filename):
     # 8. SIMPAN ke database (model BARU)
     # =====================================================
     record = GradingResult(
-        filename=filename,
         length_cm=length_cm,
         diameter_cm=diameter_cm,
         weight_est_g=weight_est_g,
@@ -90,7 +89,6 @@ def process_and_grade_image(img, filename):
         ratio_norm=ratio_norm,
 
         fuzzy_score=fuzzy_score,
-        grade_by_weight=grade_weight,
         final_grade=final_grade
     )
 

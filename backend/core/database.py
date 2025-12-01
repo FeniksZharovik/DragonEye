@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
 DB_USER = os.getenv("DB_USER", "postgres")     # Adjust to your username
-DB_PASS = os.getenv("DB_PASS", "post")     # Adjust to your password
+DB_PASS = os.getenv("DB_PASS", "unopsql")     # Adjust to your password
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_NAME = os.getenv("DB_NAME", "dragonFruit")
 

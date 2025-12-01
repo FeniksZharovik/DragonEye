@@ -40,18 +40,6 @@ class GradingresultService:
             logger.error(f"Error fetching grading result by ID {result_id}: {str(e)}")
             raise
 
-    def get_by_filename(self, filename: str) -> Optional[GradingResult]:
-        """Fetch grading results by filename"""
-        try:
-            results = self.db.query(GradingResult).filter(
-                GradingResult.filename == filename
-            ).all()
-            logger.info(f"Fetched {len(results)} results for filename: {filename}")
-            return results
-        except Exception as e:
-            logger.error(f"Error fetching grading result by filename {filename}: {str(e)}")
-            raise
-
     def create(self, grading_data: GradingResultCreate) -> GradingResult:
         """Create a new grading result"""
         try:
