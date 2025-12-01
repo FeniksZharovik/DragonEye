@@ -6,8 +6,8 @@ import sys
 # =========================
 # IMPORT MODEL & MQTT SENDER
 # =========================
-sys.path.append(r"D:\Programming\Clone Github\DargonFruit_Grading\model")
-sys.path.append(r"D:\Programming\Clone Github\DargonFruit_Grading\iot")
+sys.path.append(r"E:\DragonEye\model")
+sys.path.append(r"E:\DragonEye\iot")
 
 from predict_single import predict_single_image
 from mqtt_machine_bridge import send_grade   # ← Kirim grade via MQTT

@@ -1,7 +1,7 @@
 import paho.mqtt.client as mqtt
 
 # KONFIGURASI MQTT
-MQTT_BROKER = "10.120.200.21"     # Samakan dengan ESP32
+MQTT_BROKER = "10.204.14.105"     # Samakan dengan ESP32
 MQTT_PORT   = 1883
 TOPIC_WEIGHT = "iot/machine/weight"   # Data dari load cell
 
