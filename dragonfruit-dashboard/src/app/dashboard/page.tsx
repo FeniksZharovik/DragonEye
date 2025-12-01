@@ -6,14 +6,12 @@ import { fetchFromAPI } from '@/lib/api';
 
 interface GradingResult {
   id: string;
-  filename: string;
   length_cm: number;
   diameter_cm: number;
   weight_est_g: number;
   weight_actual_g: number;
   ratio: number;
   fuzzy_score: number;
-  grade_by_weight: string;
   final_grade: "A" | "B" | "C";
   tanggal: string;
 }
@@ -321,7 +319,6 @@ export default function DashboardPage() {
                       <th className="px-6 py-4 text-left text-xs font-bold text-slate-800 uppercase tracking-widest">Diameter (cm)</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-slate-800 uppercase tracking-widest">Ratio</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-slate-800 uppercase tracking-widest">Fuzzy Score</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-slate-800 uppercase tracking-widest">Grade Weight</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-slate-800 uppercase tracking-widest">Final Grade</th>
                     </tr>
                   </thead>
@@ -346,15 +343,6 @@ export default function DashboardPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                              row.grade_by_weight === 'A' ? 'bg-emerald-100 text-emerald-700' :
-                              row.grade_by_weight === 'B' ? 'bg-amber-100 text-amber-700' :
-                              'bg-rose-100 text-rose-700'
-                            }`}>
-                              Grade {row.grade_by_weight}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
                             <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold border-2 ${
                               row.final_grade === 'A' ? 'bg-emerald-50 text-emerald-700 border-emerald-400' :
                               row.final_grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-400' :
@@ -367,7 +355,7 @@ export default function DashboardPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                        <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                           No data available
                         </td>
                       </tr>

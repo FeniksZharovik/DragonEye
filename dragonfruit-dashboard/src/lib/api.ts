@@ -13,11 +13,11 @@ export async function fetchFromAPI<T>(
       ...options?.headers as Record<string, string>,
     };
 
-    // Fallback: Add session_id from localStorage if available (backup for cookies)
+    // Add session_id from localStorage as X-Session-ID header (primary auth method)
     const sessionId = typeof window !== 'undefined' ? localStorage.getItem('session_id') : null;
-    if (sessionId && !headers['Authorization']) {
+    if (sessionId) {
       headers['X-Session-ID'] = sessionId;
-      console.log('📍 Using session_id from localStorage as fallback');
+      console.log('📍 Using session_id from localStorage as X-Session-ID header');
     }
 
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
