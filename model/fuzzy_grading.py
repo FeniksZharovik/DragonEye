@@ -28,7 +28,7 @@ df['ratio_norm'] = normalize(df['ratio'])
 
 # 4) Fuzzy Variables
 length = ctrl.Antecedent(np.linspace(0, 1, 101), 'length')
-diameter = ctrl.Antecedent(np.lin space(0, 1, 101), 'diameter')
+diameter = ctrl.Antecedent(np.linspace(0, 1, 101), 'diameter')
 weight = ctrl.Antecedent(np.linspace(0, 1, 101), 'weight')
 ratio = ctrl.Antecedent(np.linspace(0, 1, 101), 'ratio')
 
