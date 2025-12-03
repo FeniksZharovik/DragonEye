@@ -5,7 +5,7 @@ import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 
 # 1) Baca data fitur
-df = pd.read_csv(r"E:\DragonEye\dataset\features.csv")
+df = pd.read_csv(r"D:\Programming\Clone Github\DargonFruit_Grading\dataset\features.csv")
 
 required_cols = ['length_cm', 'diameter_cm', 'weight_est_g']
 for col in required_cols:
@@ -28,7 +28,7 @@ df['ratio_norm'] = normalize(df['ratio'])
 
 # 4) Fuzzy Variables
 length = ctrl.Antecedent(np.linspace(0, 1, 101), 'length')
-diameter = ctrl.Antecedent(np.linspace(0, 1, 101), 'diameter')
+diameter = ctrl.Antecedent(np.lin space(0, 1, 101), 'diameter')
 weight = ctrl.Antecedent(np.linspace(0, 1, 101), 'weight')
 ratio = ctrl.Antecedent(np.linspace(0, 1, 101), 'ratio')
 
@@ -57,9 +57,24 @@ grade['A'] = fuzz.trimf(grade.universe, [75, 100, 100])
 
 # 5) Aturan fuzzy
 rules = [
-    ctrl.Rule(weight['high'] & diameter['large'] & length['large'], grade['A']),
+
+    # --- Grade A ---
+    ctrl.Rule(weight['high'] & diameter['large'], grade['A']),
+    ctrl.Rule(weight['high'] & length['large'], grade['A']),
+    ctrl.Rule(diameter['large'] & length['large'] & ratio['good'], grade['A']),
+
+    # --- Grade B ---
     ctrl.Rule(weight['mid'] & diameter['medium'], grade['B']),
-    ctrl.Rule(weight['low'] | ratio['poor'] | length['small'], grade['C']),
+    ctrl.Rule(weight['mid'] & length['medium'], grade['B']),
+    ctrl.Rule(diameter['large'] & length['medium'], grade['B']),
+    ctrl.Rule(diameter['medium'] & length['large'], grade['B']),
+    ctrl.Rule(ratio['normal'], grade['B']),
+
+    # --- Grade C ---
+    ctrl.Rule(weight['low'], grade['C']),
+    ctrl.Rule(diameter['small'], grade['C']),
+    ctrl.Rule(length['small'], grade['C']),
+    ctrl.Rule(ratio['poor'], grade['C']),
 ]
 
 control_sys = ctrl.ControlSystem(rules)
@@ -101,7 +116,7 @@ def final_grade(row):
 df['final_grade'] = df.apply(final_grade, axis=1)
 
 # 8) Save
-output = r"E:\DragonEye\dataset\graded_features.csv"
+output = r"D:\Programming\Clone Github\DargonFruit_Grading\dataset\graded_features.csv"
 df.to_csv(output, index=False, encoding='utf-8')
 
 print("[OK] Fuzzy grading + Standar berat selesai!")

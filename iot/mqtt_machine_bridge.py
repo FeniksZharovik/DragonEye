@@ -1,6 +1,6 @@
 import paho.mqtt.client as mqtt
 
-BROKER = "10.204.14.105"
+BROKER = "10.204.14.89"
 TOPIC  = "iot/machine/grade"
 
 # --- Setup MQTT Client ---

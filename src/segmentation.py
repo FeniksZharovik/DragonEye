@@ -2,9 +2,6 @@ import cv2
 import numpy as np
 
 def segment_image(hsv):
-    """
-    Segmentasi buah naga dengan pembersihan background halus tanpa menghapus objek.
-    """
 
     # --- Warna utama buah naga (merah, hijau, kuning) ---
     lower_red1 = np.array([0, 40, 40])
@@ -23,8 +20,6 @@ def segment_image(hsv):
     mask = cv2.bitwise_or(mask_red, cv2.bitwise_or(mask_green, mask_yellow))
 
     # --- Buang background putih / abu & bayangan ---
-    s = hsv[:, :, 1]
-    v = hsv[:, :, 2]
     bg_light = cv2.inRange(hsv, (0, 0, 160), (180, 60, 255))
     bg_dark = cv2.inRange(hsv, (0, 0, 0), (180, 100, 50))
     bg_mask = cv2.bitwise_or(bg_light, bg_dark)

@@ -6,10 +6,10 @@ import sys
 # =========================
 # IMPORT MODEL & MQTT SENDER
 # =========================
-sys.path.append(r"E:\DragonEye\model")
-sys.path.append(r"E:\DragonEye\iot")
+sys.path.append(r"D:\Programming\Clone Github\DargonFruit_Grading\model")
+sys.path.append(r"D:\Programming\Clone Github\DargonFruit_Grading\iot")
 
-from predict_single import predict_single_image
+from fuzzy_single import predict_single_image
 from mqtt_machine_bridge import send_grade   # ← Kirim grade via MQTT
 
 TARGET_SIZE = 3060
@@ -91,8 +91,6 @@ while True:
 
     output = cv2.resize(square, (TARGET_SIZE, TARGET_SIZE))
 
-    cv2.imshow("Camera 1:1 (3060x3060)", output)
-
     key = cv2.waitKey(1)
 
     # =========================
@@ -132,6 +130,9 @@ while True:
 
         except Exception as e:
             print("Terjadi kesalahan:", e)
+
+    output = cv2.resize(square, (720, 720))
+    cv2.imshow("Camera 1:1 (3060x3060)", output)
 
     if key == ord('q'):
         break

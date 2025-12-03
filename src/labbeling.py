@@ -1,6 +1,6 @@
 import pandas as pd
 
-file_path = r"E:\DragonEye\dataset\graded_features.csv"
+file_path = r"D:\Programming\Clone Github\DargonFruit_Grading\dataset\graded_features.csv"
 df = pd.read_csv(file_path)
 
 print("Kolom yang ada:", df.columns)

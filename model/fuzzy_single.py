@@ -81,6 +81,7 @@ def extract_features(segmented_img, mask):
     c = max(contours, key=cv2.contourArea)
     x, y, w_box, h_box = cv2.boundingRect(c)
 
+    # === sama seperti version batch
     pixel_per_cm = 102.0
     cm_per_pixel = 1.0 / pixel_per_cm
 
@@ -90,10 +91,10 @@ def extract_features(segmented_img, mask):
     radius = diameter_cm / 2
     volume_cm3 = math.pi * (radius ** 2) * length_cm
 
-    density = 0.22
+    density = 0.25     # rata-rata density buah naga
     weight_est_g = density * volume_cm3
 
-    weight_est_g *= 1.32
+    weight_est_g *= 1.45
     weight_est_g = max(weight_est_g, 0)
 
     ratio = length_cm / diameter_cm if diameter_cm > 0 else 0.0
