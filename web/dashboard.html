@@ -4,64 +4,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DragonEye Dashboard</title>
-    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="static/css/dashboard.css">
 </head>
 <body>
 
-<nav class="navbar">
-    <h2>DragonEye Dashboard</h2>
-    <button id="logoutBtn" class="btn-logout">Logout</button>
-</nav>
-
-<div class="container">
-
-    <!-- Capture Card -->
-    <div class="card">
-        <h3>Capture Image</h3>
-        <video id="camera" autoplay></video>
-        <button class="btn-primary" id="captureBtn">Capture</button>
+<section class="top">
+    <div class="camera-panel">
+        <div class="camera-box" id="cameraBox">
+            <video id="camera" autoplay playsinline></video>
+        </div>
+        <button id="captureBtn" class="btn">Capture</button>
     </div>
 
-    <!-- Recent Result Card -->
-    <div class="card">
-        <h3>Recent Results</h3>
-
-        <div class="results-container">
-            <div class="result-row"><span>Grade:</span> <span id="res-grade">-</span></div>
-            <div class="result-row"><span>Score:</span> <span id="res-score">-</span></div>
-            <div class="result-row"><span>Length (cm):</span> <span id="res-length">-</span></div>
-            <div class="result-row"><span>Diameter (cm):</span> <span id="res-diameter">-</span></div>
-            <div class="result-row"><span>Est. Weight (g):</span> <span id="res-est-weight">-</span></div>
-            <div class="result-row"><span>Actual Weight (g):</span> <span id="res-actual-weight">-</span></div>
-            <div class="result-row"><span>Ratio L/D:</span> <span id="res-ratio">-</span></div>
-
-            <div class="grade-badge" id="grade-badge">-</div>
+    <div class="gauge-panel">
+        <div class="gauge-box" id="gaugeBox">
+            <svg id="gaugeSVG">
+                <circle id="gBg"></circle>
+                <circle id="gFill"></circle>
+            </svg>
+            <div class="gValue" id="gValue">-</div>
         </div>
     </div>
+</section>
 
-</div>
-
-<!-- Log Table -->
-<div class="log-container">
+<section class="log-section">
     <h3>Prediction Log</h3>
-    <table id="log-table">
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>Grade</th>
-                <th>Score</th>
-                <th>Length</th>
-                <th>Diameter</th>
-                <th>Est.Weight</th>
-                <th>Actual</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-</div>
+    <div class="log-wrapper">
+        <table id="logTable">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Grade</th>
+                    <th>Length</th>
+                    <th>Diameter</th>
+                    <th>Est.Weight</th>
+                    <th>Actual</th>
+                </tr>
+            </thead>
+            <tbody id="logBody"></tbody>
+        </table>
+    </div>
+</section>
 
-<script src="static/js/firebase-config.js"></script>
-<script src="static/js/camera.js"></script>
-<script src="static/js/app.js"></script>
+<!-- Firebase MUST load first (module) -->
+<script type="module" src="static/js/firebase-config.js"></script>
+<script type="module" src="static/js/app.js"></script>
+<script type="module" src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script type="module" src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+
 </body>
 </html>

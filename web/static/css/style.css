@@ -1,8 +1,8 @@
 body {
     margin: 0;
     font-family: Arial, sans-serif;
-    background: #0d1117;
-    color: white;
+    background: #f5f6fa;
+    color: #222;
 }
 
 /* LOGIN PAGE */
@@ -14,16 +14,17 @@ body {
 }
 
 .login-card {
-    background: #161b22;
+    background: #ffffff;
     padding: 40px;
     border-radius: 12px;
     text-align: center;
     width: 320px;
-    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    box-shadow: 0 0 20px rgba(0,0,0,0.08);
 }
 
 .login-card h1 {
     margin-bottom: 10px;
+    color: #111;
 }
 
 .btn-github {
@@ -46,11 +47,12 @@ body {
 
 /* DASHBOARD */
 .navbar {
-    background: #161b22;
+    background: #ffffff;
     padding: 15px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.05);
 }
 
 .btn-logout {
@@ -69,11 +71,12 @@ body {
 }
 
 .card {
-    background: #1c2128;
+    background: #ffffff;
     padding: 20px;
     border-radius: 12px;
     flex: 1;
-    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    box-shadow: 0 0 15px rgba(0,0,0,0.05);
+    border: 1px solid rgba(0,0,0,0.05);
 }
 
 .btn-primary {

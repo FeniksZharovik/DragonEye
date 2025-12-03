@@ -1,58 +1,103 @@
-// -------------------------------
-// Update Result UI
-// -------------------------------
-function updateResultUI(r) {
-    document.getElementById('res-grade').innerText = r.grade || '-';
-    document.getElementById('res-score').innerText = (r.score !== undefined) ? (r.score.toFixed(1) + "%") : '-';
-    document.getElementById('res-length').innerText = r.length ?? '-';
-    document.getElementById('res-diameter').innerText = r.diameter ?? '-';
-    document.getElementById('res-est-weight').innerText = r.weight ?? '-';
-    document.getElementById('res-actual-weight').innerText = r.actual_weight ?? '-';
-    document.getElementById('res-ratio').innerText = r.ratio ?? '-';
+// ===============================
+// FIREBASE DATABASE LISTENER
+// ===============================
 
-    // Badge animation & color
-    const badge = document.getElementById('grade-badge');
-    badge.textContent = r.grade || '-';
+import { app } from "./firebase-config.js";
+import {
+    getDatabase,
+    ref,
+    query,
+    limitToLast,
+    onValue
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    badge.classList.remove('A', 'B', 'C');
-    if (r.grade) badge.classList.add(r.grade);
+const db = getDatabase(app);
 
-    badge.style.transform = "scale(1.15)";
-    setTimeout(() => badge.style.transform = "scale(1)", 300);
+// Baca 1 data terbaru dari "predictions"
+const latestPredRef = query(ref(db, "predictions"), limitToLast(1));
+
+onValue(latestPredRef, (snap) => {
+    if (!snap.exists()) return;
+
+    snap.forEach(item => {
+        const data = item.val();
+        console.log("DATA MASUK:", data);
+
+        // Update Tabel
+        addToTable(data);
+
+        // Update Gauge kalau ada actual
+        if (data.actual !== undefined) {
+            setGauge(data.actual);
+        }
+    });
+});
+
+// ===============================
+// GAUGE FUNCTIONS
+// ===============================
+function resizeGauge() {
+    const box = document.getElementById("gaugeBox");
+    const svg = document.getElementById("gaugeSVG");
+
+    let size = box.clientWidth;
+    svg.setAttribute("width", size);
+    svg.setAttribute("height", size);
+
+    const r = (size / 2) - 20;
+    const bg = document.getElementById("gBg");
+    const fill = document.getElementById("gFill");
+
+    bg.setAttribute("cx", size / 2);
+    bg.setAttribute("cy", size / 2);
+    bg.setAttribute("r", r);
+
+    fill.setAttribute("cx", size / 2);
+    fill.setAttribute("cy", size / 2);
+    fill.setAttribute("r", r);
+
+    const c = 2 * Math.PI * r;
+    fill.style.strokeDasharray = c;
+    fill.style.strokeDashoffset = c;
 }
 
-// -------------------------------
-// Append Log Entry
-// -------------------------------
-function appendLog(r) {
-    const tbody = document.querySelector('#log-table tbody');
-    const tr = document.createElement('tr');
-    const time = new Date().toLocaleString();
+window.addEventListener("load", resizeGauge);
+window.addEventListener("resize", resizeGauge);
 
-    tr.innerHTML = `
-        <td>${time}</td>
-        <td>${r.grade || '-'}</td>
-        <td>${r.score ? r.score.toFixed(1) : '-'}</td>
-        <td>${r.length || '-'}</td>
-        <td>${r.diameter || '-'}</td>
-        <td>${r.weight || '-'}</td>
-        <td>${r.actual_weight || '-'}</td>
+// ===============================
+// UPDATE GAUGE
+// ===============================
+function setGauge(value) {
+    const fill = document.getElementById("gFill");
+    const val = document.getElementById("gValue");
+
+    value = Math.max(0, Math.min(100, value));
+
+    const r = fill.getAttribute("r");
+    const c = 2 * Math.PI * r;
+
+    const offset = c - (value / 100) * c;
+    fill.style.strokeDashoffset = offset;
+    val.textContent = value;
+}
+
+// ===============================
+// TAMBAH KE TABEL
+// ===============================
+function addToTable(data) {
+    const table = document.querySelector("#logTable tbody");
+    const now = new Date().toLocaleTimeString();
+
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+        <td>${now}</td>
+        <td>${data.grade ?? "-"}</td>
+        <td>${data.length ?? "-"}</td>
+        <td>${data.diameter ?? "-"}</td>
+        <td>${data.weight ?? "-"}</td>
+        <td>${data.actual ?? "-"}</td>
     `;
 
-    tbody.prepend(tr);
+    table.prepend(row);
 }
-
-// -------------------------------
-// Logout Button
-// -------------------------------
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    // Jika pakai Firebase Auth
-    if (firebase.auth) {
-        firebase.auth().signOut().then(() => {
-            window.location.href = "login.html";
-        });
-    } else {
-        // Fallback jika tidak pakai Firebase Auth
-        window.location.href = "login.html";
-    }
-});
