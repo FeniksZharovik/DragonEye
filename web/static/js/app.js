@@ -13,7 +13,7 @@ import {
 
 const db = getDatabase(app);
 
-// Baca 1 data terbaru dari "predictions"
+// Ambil data terbaru dari "predictions"
 const latestPredRef = query(ref(db, "predictions"), limitToLast(1));
 
 onValue(latestPredRef, (snap) => {
@@ -23,15 +23,16 @@ onValue(latestPredRef, (snap) => {
         const data = item.val();
         console.log("DATA MASUK:", data);
 
-        // Update Tabel
+        // Update tabel
         addToTable(data);
 
-        // Update Gauge kalau ada actual
-        if (data.actual !== undefined) {
-            setGauge(data.actual);
+        // Update Gauge pakai grade
+        if (data.grade !== undefined) {
+            setGauge(data.grade);
         }
     });
 });
+
 
 // ===============================
 // GAUGE FUNCTIONS
@@ -64,22 +65,33 @@ function resizeGauge() {
 window.addEventListener("load", resizeGauge);
 window.addEventListener("resize", resizeGauge);
 
+
 // ===============================
-// UPDATE GAUGE
+// UPDATE GAUGE (Grade Only)
 // ===============================
-function setGauge(value) {
+function setGauge(grade) {
     const fill = document.getElementById("gFill");
     const val = document.getElementById("gValue");
 
-    value = Math.max(0, Math.min(100, value));
+    // Tampilkan huruf
+    val.textContent = grade;
 
-    const r = fill.getAttribute("r");
-    const c = 2 * Math.PI * r;
+    // Warna gauge
+    if (grade === "A") {
+        fill.style.stroke = "#00c853";  // hijau
+    } else if (grade === "B") {
+        fill.style.stroke = "#ffab00";  // kuning
+    } else if (grade === "C") {
+        fill.style.stroke = "#d50000";  // merah
+    } else {
+        // fallback warna jika undefined
+        fill.style.stroke = "#9e9e9e";
+    }
 
-    const offset = c - (value / 100) * c;
-    fill.style.strokeDashoffset = offset;
-    val.textContent = value;
+    // Full circle (100%)
+    fill.style.strokeDashoffset = 0;
 }
+
 
 // ===============================
 // TAMBAH KE TABEL
@@ -101,3 +113,33 @@ function addToTable(data) {
 
     table.prepend(row);
 }
+
+// ===============================
+// MQTT SEND CAPTURE TRIGGER
+// ===============================
+
+// Inisialisasi MQTT WebSocket client
+const mqttClient = mqtt.connect("ws://10.204.14.89:8083/mqtt"); 
+// Pastikan broker ESP32 atau Mosquitto aktif WS port 8083
+
+mqttClient.on("connect", () => {
+    console.log("✓ MQTT Web Connected");
+});
+
+// Event tombol capture
+document.getElementById("captureBtn").addEventListener("click", () => {
+    console.log("Mengirim trigger capture...");
+
+    mqttClient.publish("iot/camera/capture", "capture");
+
+    // Optional feedback UI
+    const btn = document.getElementById("captureBtn");
+    btn.textContent = "Processing...";
+    btn.disabled = true;
+
+    setTimeout(() => {
+        btn.textContent = "Capture";
+        btn.disabled = false;
+    }, 2000);
+});
+
