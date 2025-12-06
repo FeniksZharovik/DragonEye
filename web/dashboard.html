@@ -11,7 +11,8 @@
 <section class="top">
     <div class="camera-panel">
         <div class="camera-box" id="cameraBox">
-            <video id="camera" autoplay playsinline></video>
+            <!-- VIDEO STREAM DARI PYTHON -->
+            <img id="camera" src="http://10.204.14.89:5000/video_feed" alt="Stream">
         </div>
         <button id="captureBtn" class="btn">Capture</button>
     </div>
@@ -46,13 +47,20 @@
     </div>
 </section>
 
-<!-- Firebase MUST load first (module) -->
+<!-- ========================= -->
+<!-- 🔥 Firebase (MODULE MODE) -->
+<!-- ========================= -->
 <script type="module" src="static/js/firebase-config.js"></script>
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<script type="module" src="static/js/app.js"></script>
-<script type="module" src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script type="module" src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
+<!-- ========================= -->
+<!-- 🔧 MQTT WEBSOCKET CLIENT -->
+<!-- ========================= -->
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<!-- ========================= -->
+<!-- 📌 MAIN APP LOGIC -->
+<!-- ========================= -->
+<script type="module" src="static/js/app.js"></script>
 
 </body>
 </html>
